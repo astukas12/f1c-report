@@ -1,0 +1,9 @@
+---
+title: "Fantasy1 Championship Weekly"
+---
+
+```{r}
+WEEK <- 4
+```
+
+{{< include _weekly.qmd >}}

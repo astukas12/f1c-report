@@ -1,0 +1,11 @@
+---
+title: "Week 1"
+subtitle: "Fantasy1 Championship · 2026"
+date: 2026-09-15
+---
+
+```{r}
+WEEK <- 1
+```
+
+{{< include ../_report.qmd >}}

@@ -1,0 +1,33 @@
+```{r setup}
+# WEEK is set by the week page that includes this file
+source("R/data.R")
+source("R/ui.R")
+
+lg  <- load_league()
+sc  <- load_scores(lg, WEEK)
+wk  <- sc$results %>% filter(week == WEEK)
+st  <- build_standings(sc$results, WEEK)
+pl  <- sc$players %>% filter(week == WEEK) %>% left_join(lg$teams, by = "franchise_id")
+```
+
+## Standings
+
+```{r standings}
+standings_html(st, MY_TEAM)
+```
+
+## Week `r WEEK` results
+
+```{r results}
+results_html(wk, MY_TEAM)
+```
+
+## Team of the week
+
+```{r team-of-week}
+lineup_html(team_of_week(pl), max(wk$points))
+```
+
+::: {.note}
+Standings order: F1 points, then average weekly finish, then points for. Team of the week is the best QB, 2 RB, 3 WR, TE and 2 FLEX from every rostered player.
+:::

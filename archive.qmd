@@ -1,0 +1,11 @@
+---
+title: "Archive"
+subtitle: "Every weekly report, 2026"
+listing:
+  contents: weeks
+  sort: "date desc"
+  type: table
+  fields: [title, date]
+  sort-ui: false
+  filter-ui: false
+---

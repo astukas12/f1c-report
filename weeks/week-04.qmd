@@ -1,0 +1,11 @@
+---
+title: "Week 4"
+subtitle: "Fantasy1 Championship · 2026"
+date: 2026-10-05
+---
+
+```{r}
+WEEK <- 4
+```
+
+{{< include ../_weekly.qmd >}}

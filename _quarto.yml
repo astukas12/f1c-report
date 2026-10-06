@@ -1,0 +1,39 @@
+project:
+  type: website
+  output-dir: docs
+  execute-dir: project
+  render:
+    - index.qmd
+    - archive.qmd
+    - weeks/*.qmd
+
+website:
+  title: "Fantasy1 Championship"
+  site-url: "https://astukas12.github.io/f1c-review"
+  open-graph: true
+  navbar:
+    logo: assets/logo-sm.png
+    left:
+      - text: "Latest"
+        href: index.qmd
+      - text: "Archive"
+        href: archive.qmd
+  page-footer:
+    center: "Presented by Golden Ticket Sims · Unpaid Intern"
+
+format:
+  html:
+    theme: [darkly, styles.scss]
+    toc: false
+    page-layout: article
+    include-in-header:
+      text: |
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    smooth-scroll: true
+
+execute:
+  echo: false
+  warning: false
+  message: false
+  freeze: auto
