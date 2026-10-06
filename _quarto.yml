@@ -9,7 +9,7 @@ project:
 
 website:
   title: "Fantasy1 Championship"
-  site-url: "https://astukas12.github.io/f1c-review"
+  site-url: "https://astukas12.github.io/f1c-report"
   open-graph: true
   navbar:
     logo: assets/logo-sm.png
