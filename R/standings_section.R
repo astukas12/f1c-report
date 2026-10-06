@@ -8,12 +8,8 @@ F1_STD     <- c(15, 10, 7, 4, 2, 1, rep(0, 7))
 RACE_COLS  <- c("#E8C547", "#5b9cf5", "#4cc38a", "#e5484d", "#c084fc", "#f59e0b")
 GHOST      <- "#a8954a"
 
-# Weekly scores of past seasons (R/history.R), cached in sims/history-weekly.rds
-load_history <- function() {
-  f <- "sims/history-weekly.rds"
-  if (!file.exists(f)) { source("R/history.R", local = TRUE); saveRDS(build_history(max_week_live = 1), f) }
-  readRDS(f) %>% filter(year %in% HIST_YEARS)
-}
+# Weekly scores of past seasons, from data/cache/history-<year>.rds (R/cache.R)
+load_history <- function() history_weekly(HIST_YEARS)
 
 split_pts <- function(rk) vapply(rk, function(r) { n <- sum(rk == r); lo <- r - (n - 1) / 2; mean(F1_STD[lo:(lo + n - 1)]) }, numeric(1))
 

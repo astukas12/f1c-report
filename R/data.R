@@ -11,6 +11,7 @@ LEAGUE_SS <- "1-hbPnZU2dLalXbCRjsDe79vX1eJr6gzon4qnrWYuLro"
 MY_TEAM   <- "0001"
 
 gs4_deauth()
+source("R/cache.R")   # finished weeks and past seasons are read from data/cache
 
 # Owner names drift between sheets; everything is keyed to the Team tab's Name
 OWNER_ALIAS <- c(Zibuda = "Dom", Snooze = "Wisnewski", Kash = "KashQ", YMC = "Chafetz")
@@ -74,7 +75,8 @@ award <- function(rank, lookup, col) {
 }
 
 load_scores <- function(lg, through_week) {
-  pl <- map_dfr(seq_len(through_week), ~ get_week(lg$conn, .x)) %>%
+  # Earlier weeks come from the cache once final; the week being reported is always refetched
+  pl <- map_dfr(seq_len(through_week), ~ get_week_cached(lg$conn, SEASON, .x, force = .x == through_week)) %>%
     left_join(lg$players, by = "player_id")
 
   results <- pl %>%
