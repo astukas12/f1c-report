@@ -62,11 +62,22 @@ etr_prior <- function(lg) {
   etr %>% filter(!is.na(Name)) %>% transmute(Name, z = (Rating - mean(Rating)) / sd(Rating))
 }
 
-ros_inputs <- function(res, lg, through) {
+# Title-odds model version. v2 (6 Oct, Andrew): this season's results only, no ETR prior; each team's true
+# weekly mean = its average so far +/- sd/sqrt(n), and it drifts DRIFT_SD points a week over the remaining
+# weeks (injuries, trades, waivers). DRIFT_SD = 8 chosen by backtest on 2022, 2023 and 2025 (as of weeks 4, 8, 12):
+# with 8, no team the model put under 1% went on to finish top 3; without drift, 4 did.
+ROS_MODEL <- "v2"
+DRIFT_SD  <- 8
+
+ros_inputs <- function(res, lg, through, model = ROS_MODEL) {
   r <- res %>% filter(week <= through)
   t <- r %>% group_by(Name) %>% summarise(n = n(), m = mean(points), s = sd(points), .groups = "drop")
   pooled <- sqrt(mean(t$s^2, na.rm = TRUE))
   if (!is.finite(pooled)) pooled <- 25
+  if (model == "v2") return(t %>% mutate(
+    s     = coalesce(s, pooled),
+    sd    = sqrt((pmax(n - 1, 0) * s^2 + PRIOR_K * pooled^2) / (pmax(n - 1, 0) + PRIOR_K)),  # weekly SD, steadied toward the league's
+    mu    = m, mu_se = sd / sqrt(n), w_data = 1))
   t %>% left_join(etr_prior(lg), by = "Name") %>%
     mutate(z     = coalesce(z, 0),
            prior = mean(r$points) + z * PRIOR_SPREAD,
@@ -78,9 +89,10 @@ ros_inputs <- function(res, lg, through) {
            w_data = (n / sd^2) / prec)
 }
 
-ros_sim <- function(lu, res, lg, through, nsim = ROS_N, seed = 42) {
+ros_sim <- function(lu, res, lg, through, nsim = ROS_N, seed = 42, model = ROS_MODEL) {
   set.seed(seed)
-  inp   <- ros_inputs(res, lg, through) %>% arrange(Name)
+  inp   <- ros_inputs(res, lg, through, model) %>% arrange(Name)
+  drift <- if (model == "v2") DRIFT_SD else 0
   teams <- inp$Name
   wk_mu <- inp$mu; wk_sd <- inp$sd; mu_se <- inp$mu_se
 
@@ -96,6 +108,7 @@ ros_sim <- function(lu, res, lg, through, nsim = ROS_N, seed = 42) {
   if (left > 0) {
     true_mu <- rowm(wk_mu) + matrix(rnorm(nsim * nt), nsim) * rowm(mu_se)
     for (w in seq_len(left)) {
+      if (drift > 0) true_mu <- true_mu + matrix(rnorm(nsim * nt, 0, drift), nsim)
       sc <- true_mu + matrix(rnorm(nsim * nt), nsim) * rowm(wk_sd)
       rk <- t(apply(-sc, 1, rank, ties.method = "random"))
       F1 <- F1 + matrix(wl$F1Pts[rk], nsim); ER <- ER + matrix(wl$Earnings[rk], nsim)
@@ -115,13 +128,13 @@ ros_sim <- function(lu, res, lg, through, nsim = ROS_N, seed = 42) {
 }
 
 # Per-week odds archive (sims/title-odds.csv). Weeks never archived are backfilled from results through that week.
-ros_history <- function(lu, res, lg, week) {
-  f <- "sims/title-odds.csv"; dir.create("sims", showWarnings = FALSE)
+ros_history <- function(lu, res, lg, week, model = ROS_MODEL) {
+  f <- if (model == "v2") "sims/title-odds-v2.csv" else "sims/title-odds.csv"; dir.create("sims", showWarnings = FALSE)
   h <- if (file.exists(f)) read.csv(f, stringsAsFactors = FALSE) else NULL
   for (w in seq_len(week)) {
     live <- w == week
     if (live || is.null(h) || !w %in% h$week) {
-      r <- ros_sim(lu, res, lg, w, nsim = if (live) ROS_N else 5000)
+      r <- ros_sim(lu, res, lg, w, nsim = if (live) ROS_N else 5000, model = model)
       r$source <- if (live) "live" else "backfill"
       h <- bind_rows(if (!is.null(h)) filter(h, week != w), as.data.frame(r))
     }
