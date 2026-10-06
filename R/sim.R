@@ -10,7 +10,7 @@
 
 suppressPackageStartupMessages({library(dplyr); library(stringr); library(tidyr); library(ffscrapr)})
 
-SIM_N    <- 20000
+SIM_N    <- 50000
 SIM_SLOTS <- list(c("QB", 1), c("RB", 2), c("WR", 3), c("TE", 1))
 SIM_FLEX <- 2
 SKILL    <- c("QB", "RB", "WR", "TE")

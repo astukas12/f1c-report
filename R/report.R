@@ -7,7 +7,7 @@ suppressPackageStartupMessages({library(ggplot2); library(htmltools)})
 LAST_WEEK <- 18            # final F1C week (MFL endWeek)
 SLOTS5    <- c("QB", "RB", "WR", "TE", "FLEX")
 PRIOR_K   <- 4             # ETR preseason prior counts as this many weeks of results in the season sim
-ROS_N     <- 20000
+ROS_N     <- 50000
 GOLD      <- "#E8C547"
 
 # ---- data -------------------------------------------------------------------------
@@ -120,8 +120,9 @@ ros_sim <- function(lu, res, lg, through, nsim = ROS_N, seed = 42, model = ROS_M
   rev  <- t(apply(F1 + seas, 1, function(x) x + socialism(x)))   # 2027 revenue = total F1 + socialism
 
   tibble(Name = teams, week = through, Current = f1_0, WeeklyMu = round(wk_mu, 1),
-         Proj = colMeans(F1), ProjSD = apply(F1, 2, sd), ProjEarn = colMeans(ER + seE),
-         Seasonal = colMeans(seas), Revenue = colMeans(rev),
+         Proj = colMeans(F1), ProjSD = apply(F1, 2, sd), P10 = apply(F1, 2, quantile, .1), P90 = apply(F1, 2, quantile, .9), ProjEarn = colMeans(ER + seE),
+         Seasonal = colMeans(seas), Revenue = colMeans(rev), Socialism = colMeans(rev - F1 - seas),
+         RevP10 = apply(rev, 2, quantile, .1), RevP90 = apply(rev, 2, quantile, .9),
          Title = 100 * colMeans(fr == 1), Top3 = 100 * colMeans(fr <= 3), Top6 = 100 * colMeans(fr <= 6),
          AvgFinish = colMeans(fr)) %>%
     arrange(desc(Title), desc(Proj))
@@ -375,12 +376,11 @@ gts_href <- function() if (gts_link_ok()) GTS_URL else "#"
 ad_card <- function() {
   div(class = "ad",
       tags$img(src = logo_small(), alt = ""),
-      div(div(class = "ad-kick", "From Golden Ticket Sims"),
-          div(class = "ad-title", "The sims behind this report, for your DFS lineups"),
-          div(class = "ad-body", paste0("Slate sims and optimal lineups across ", GTS_SPORTS, "."))),
-      div(class = "ad-cta",
-          tags$a(class = "ad-btn", href = gts_href(), target = "_blank", rel = "noopener", GTS_CTA),
-          if (nzchar(GTS_PROMO)) span(class = "ad-promo", GTS_PROMO)))
+      div(div(class = "ad-kick", "Golden Ticket Sims"),
+          div(class = "ad-title", "Simulations for DraftKings contests."),
+          div(class = "ad-body", paste(GTS_SPORTS, collapse = " \u00b7 ")),
+          div(class = "ad-price", GTS_PRICE)),
+      if (gts_link_ok()) div(class = "ad-cta", tags$a(class = "ad-btn", href = GTS_URL, target = "_blank", rel = "noopener", GTS_CTA)))
 }
 
 gts_footer <- function() {

@@ -1,6 +1,6 @@
 ```{r setup}
 # WEEK is set by the page that includes this file (index.qmd, weeks/week-NN.qmd, or the share copy)
-source("R/data.R"); source("R/ui.R"); source("R/sim.R"); source("R/brand.R"); source("R/report.R"); source("R/card.R"); source("R/standings_section.R")
+source("R/data.R"); source("R/ui.R"); source("R/sim.R"); source("R/brand.R"); source("R/report.R"); source("R/card.R"); source("R/standings_section.R"); source("R/sim_section.R")
 
 lg  <- load_league()
 sc  <- load_scores(lg, WEEK)
@@ -9,9 +9,13 @@ wk  <- res %>% filter(week == WEEK)
 st  <- build_standings(res, WEEK)
 hp  <- hist_positions(load_history())
 pending <- sum(wk$pending)
+lu    <- lineups(sc, lg, load_rosters(lg))
+ohist <- ros_history(lu, res, lg, WEEK)
+odds  <- ohist %>% filter(week == WEEK)
+prevo <- ohist %>% filter(week == WEEK - 1)
 
 SECTIONS <- c(standings = "Standings", race = "The Race", weekly = "Week by Week",
-              context = "Historical Context", final = "Standings vs. Final Finish")
+              context = "Historical Context", final = "Standings vs. Final Finish", sims = "Sim Center")
 ```
 
 ```{r top}
@@ -54,6 +58,22 @@ tags$section(class = "rs", id = "final",
   settle_chart(hp, WEEK),
   settle_rows(hp, WEEK),
   div(class = "note", sprintf("Seasons %s, official tiebreak.", and_list(HIST_YEARS))))
+```
+
+```{r sims}
+tags$section(class = "rs", id = "sims",
+  div(class = "rs-kick", "The GTS Sim Center", span(class = "rs-tag", HTML("Sims by <b>Golden Ticket Sims</b>"))),
+  h2(class = "rs-head", sprintf("Title odds after week %d", WEEK)),
+  p(class = "dek", sprintf("%s simulated finishes to the season, from this season's results only.", format(ROS_N, big.mark = ","))),
+  sim_odds_table(odds, prevo, st),
+  div(class = "note", "Title = most F1 points after week 18. Wk = change in title odds since last week. Proj F1 = average final F1 points, with the range covering 80% of simulated seasons."),
+  h3(class = "rs-sub", "Title odds by week"),
+  p(class = "dek", "Each week's odds, rerun with the results to that point. Current top 5 in colour."),
+  odds_by_week_chart(ohist, odds, WEEK),
+  h3(class = "rs-sub", sprintf("Week %d sims", WEEK + 1)),
+  next_week_block(WEEK),
+  div(class = "note", "How it works: each team's weekly scoring level is its average so far. Every simulated week draws a score for each team, ranks the 12 and awards 15/10/7/4/2/1 F1 points. A team's level can drift week to week (injuries, trades, waivers), so nothing is locked in. Checked against 2022, 2023 and 2025."),
+  ad_card())
 ```
 
 ```{r foot}

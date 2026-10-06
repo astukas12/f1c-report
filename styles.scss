@@ -226,3 +226,15 @@ table.mt .nil { color: #444; }
 .fact-head { font-size: .9rem; font-weight: 600; color: #fff; line-height: 1.35; }
 .fact-sub { font-size: .78rem; color: var(--muted); line-height: 1.45; margin-top: .2rem; }
 .gts-foot span { display: block; font-size: .7rem; color: var(--faint); }
+
+ul.ad-sports { grid-column: 1 / -1; list-style: none; padding: 0; margin: .2rem 0 0; display: flex; flex-wrap: wrap; gap: .35rem; }
+ul.ad-sports li { font-size: .72rem; font-weight: 600; color: #e8e8e8; border: 1px solid #3a3210; border-radius: 999px; padding: .15rem .55rem; }
+.ad-price { display: inline-block; margin-top: .35rem; font-size: .74rem; font-weight: 700; color: #0a0a0a; background: var(--gold); border-radius: 4px; padding: .05rem .45rem; }
+.soon { border: 1px solid #262626; border-radius: 10px; padding: .9rem 1rem; background: #111; }
+.soon-k { font-size: .6rem; color: var(--gold); letter-spacing: .14em; text-transform: uppercase; font-weight: 600; }
+.soon-t { font-size: 1rem; font-weight: 700; color: #fff; margin: .2rem 0; }
+.soon-s { font-size: .78rem; color: var(--muted); }
+.ad { margin: 2rem 0 .4rem; padding: .75rem .9rem; border-radius: 10px; }
+.ad img { width: 40px; height: 40px; border-radius: 6px; }
+.ad-title { font-size: .95rem; }
+.ad-body { font-size: .76rem; line-height: 1.45; }

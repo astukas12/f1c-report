@@ -2,9 +2,9 @@
 # PLACEHOLDERS until Andrew supplies the real link / promo.
 
 GTS_URL     <- "GTS_URL"          # e.g. the GTS home or sign-up page
-GTS_PROMO   <- "GTS_PROMO"        # promo code or offer line; "" hides it
-GTS_TAGLINE <- "Sims for the sports nobody else sims."
-GTS_SPORTS  <- "NFL, NASCAR, golf, tennis, F1, MMA and more"
+GTS_PROMO   <- ""                 # no promo for now (Andrew, 6 Oct): the ad lists the sports instead
+GTS_SPORTS  <- c("NFL", "CFB", "NHL", "MMA", "NASCAR", "F1", "Tennis", "Golf", "NBA", "CBB")
+GTS_PRICE   <- "$50/month"
 GTS_CTA     <- "Run the sims"
 
 gts_link_ok <- function() !identical(GTS_URL, "GTS_URL") && nzchar(GTS_URL)
