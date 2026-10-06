@@ -1,0 +1,9 @@
+---
+title: "Sim Center"
+---
+
+```{r}
+PAGE <- "sims"
+```
+
+{{< include _page.qmd >}}

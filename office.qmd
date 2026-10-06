@@ -1,0 +1,9 @@
+---
+title: "Front Office"
+---
+
+```{r}
+PAGE <- "office"
+```
+
+{{< include _page.qmd >}}

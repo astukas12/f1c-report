@@ -1,0 +1,9 @@
+---
+title: "Week in Review"
+---
+
+```{r}
+PAGE <- "review"
+```
+
+{{< include _page.qmd >}}

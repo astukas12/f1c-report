@@ -1,0 +1,13 @@
+```{r setup}
+# PAGE is set by the page that includes this file; REPORT_DATA by make_report.R (data/cache/report-latest.rds)
+for (f in c("data", "ui", "sim", "brand", "report", "card", "standings_section", "sim_section", "money_section", "sections")) source(file.path("R", paste0(f, ".R")))
+D <- readRDS(if (exists("REPORT_FILE")) REPORT_FILE else "data/cache/report-latest.rds")
+NAV_PREFIX <- if (exists("NAV_PREFIX")) NAV_PREFIX else ""
+```
+
+```{r body}
+tagList(page_head(D, if (PAGE == "index") "Standings" else PAGES[[PAGE]], if (PAGE == "index") "Fantasy1 Championship Weekly" else PAGES[[PAGE]]),
+        page_nav(PAGE, function(p) paste0(NAV_PREFIX, p, ".html")),
+        section_body(PAGE, D),
+        page_foot(D))
+```

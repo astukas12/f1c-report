@@ -283,14 +283,15 @@ section <- function(id, n, kicker, headline, ..., tag = NULL) {
 }
 
 # Narrow table. cols = named list label -> column; first column left aligned, the rest right/tabular.
-mtable <- function(df, cols, me = NULL, cls = NULL, widths = NULL, left = 1) {
+mtable <- function(df, cols, me = NULL, cls = NULL, widths = NULL, left = 1, groups = NULL) {
   colgroup <- if (!is.null(widths)) tags$colgroup(lapply(widths, function(w) tags$col(style = if (!is.na(w)) paste0("width:", w))))
   head <- tags$tr(lapply(seq_along(cols), function(j) tags$th(HTML(names(cols)[j]), class = if (j > left) "r")))
   body <- lapply(seq_len(nrow(df)), function(i) {
     tags$tr(class = if (!is.null(me) && isTRUE(me[i])) "me",
             lapply(seq_along(cols), function(j) tags$td(class = if (j > left) "r", HTML(as.character(df[[cols[[j]]]][i])))))
   })
-  tags$table(class = paste("mt", cls), `data-quarto-disable-processing` = "true", colgroup, tags$thead(head), tags$tbody(body))
+  grp <- if (!is.null(groups)) tags$tr(class = "grp", lapply(groups, function(g) tags$th(colspan = g[2], class = if (nzchar(trimws(g[1]))) "g", HTML(g[1]))))
+  tags$table(class = paste("mt", cls), `data-quarto-disable-processing` = "true", colgroup, tags$thead(grp, head), tags$tbody(body))
 }
 
 team_cell <- function(name, sub = NULL) paste0('<span class="tn">', htmlEscape(name), '</span>',

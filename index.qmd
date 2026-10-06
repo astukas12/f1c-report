@@ -3,7 +3,7 @@ title: "Fantasy1 Championship Weekly"
 ---
 
 ```{r}
-WEEK <- 4
+PAGE <- "index"
 ```
 
-{{< include _weekly.qmd >}}
+{{< include _page.qmd >}}

@@ -4,6 +4,12 @@ project:
   execute-dir: project
   render:
     - index.qmd
+    - review.qmd
+    - sims.qmd
+    - money.qmd
+    - office.qmd
+    - teams.qmd
+    - alltime.qmd
     - archive.qmd
     - weeks/*.qmd
 

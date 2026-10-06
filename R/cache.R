@@ -49,6 +49,15 @@ history_season <- function(year, force = FALSE, players = TRUE, pause = 4) {
 history_weekly <- function(years = 2022:2025, players = FALSE) {
   bind_rows(lapply(years, function(y) history_season(y, players = players)$weekly)) %>%
     filter(!is.na(franchise_id)) %>%
-    group_by(year, week) %>% mutate(rank = rank(-score, ties.method = "min"), n_teams = n()) %>% ungroup() %>%
-    mutate(f1 = c(15, 10, 7, 4, 2, 1, rep(0, 6))[pmin(rank, 12)])
+    group_by(year, week) %>% mutate(rank = rank(-score, ties.method = "min"), n_teams = n(),
+                                    f1 = weekly_f1(rank(-score, ties.method = "average"), first(year))) %>% ungroup()
+}
+
+# Weekly F1 points by season. 2024 (10 teams, top 5 scored) is 16/11/7/4/1: solved from the season's final
+# weekly F1 totals in the league sheet ("12team math" tab), which it reproduces exactly for all 10 teams.
+F1_SCALE <- list(default = c(15, 10, 7, 4, 2, 1), `2024` = c(16, 11, 7, 4, 1))
+weekly_f1 <- function(rk, year) {
+  s <- F1_SCALE[[as.character(year)]] %||% F1_SCALE$default
+  s <- c(s, rep(0, 13))
+  vapply(rk, function(r) { n <- sum(rk == r); lo <- r - (n - 1) / 2; mean(s[lo:(lo + n - 1)]) }, numeric(1))  # tied teams split the places
 }

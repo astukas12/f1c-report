@@ -1,5 +1,8 @@
-# Render the weekly report:  Rscript make_report.R 4
-# Writes docs/weeks/week-04.html (site page) and share/F1C-Week-04.html (one self-contained file).
+# Build the weekly report:  Rscript make_report.R 4
+# 1. Pulls everything once (MFL, league sheet, cache) into data/cache/report-wNN.rds (+ report-latest.rds)
+# 2. Renders the site pages (Standings landing page + six section pages, archive, this week's archive page)
+# 3. Writes share/F1C-Week-NN.html, every section in one self-contained file
+# Then: git add -A; git commit -m "Week N"; git push
 
 args <- commandArgs(trailingOnly = TRUE)
 setwd(dirname(normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)))))
@@ -7,32 +10,36 @@ WEEK <- if (length(args)) as.integer(args[1]) else stop("Pass the week number, e
 
 QUARTO <- "C:/Program Files/RStudio/resources/app/bin/quarto/bin/quarto.exe"
 Sys.setenv(QUARTO_R = "C:/Program Files/R/R-4.4.2/bin")
+for (f in c("data", "ui", "sim", "brand", "report", "card", "standings_section", "sim_section", "money_section", "build_data")) source(file.path("R", paste0(f, ".R")))
+
+# 1. data (--render-only reuses the data already built for this week)
+dir.create("data/cache", recursive = TRUE, showWarnings = FALSE)
+rds <- sprintf("data/cache/report-w%02d.rds", WEEK)
+if (!"--render-only" %in% args) {
+  D <- build_report_data(WEEK)
+  saveRDS(D, rds)
+  message("Data built: ", rds)
+}
+file.copy(rds, "data/cache/report-latest.rds", overwrite = TRUE)
+
+# 2. site: section pages read report-latest; the week's archive page reads its own week's file
 stem <- sprintf("week-%02d", WEEK)
-page <- file.path("weeks", paste0(stem, ".qmd"))
-
-if (!file.exists(page)) writeLines(c(
-  "---", sprintf('title: "Week %d"', WEEK), 'subtitle: "Fantasy1 Championship \u00b7 2026"',
-  sprintf("date: %s", Sys.Date()), "---", "", "```{r}", sprintf("WEEK <- %d", WEEK), "```", "",
-  "{{< include ../_weekly.qmd >}}"), page, useBytes = TRUE)
-
-# Landing page = the latest week; archive lists every week page
-writeLines(c("---", 'title: "Fantasy1 Championship Weekly"', "---", "", "```{r}", sprintf("WEEK <- %d", WEEK), "```", "",
-             "{{< include _weekly.qmd >}}"), "index.qmd", useBytes = TRUE)
+writeLines(c("---", sprintf('title: "Week %d"', WEEK), sprintf("date: %s", Sys.Date()), "---", "", "```{r}",
+             sprintf('PAGE <- "index"; REPORT_FILE <- "%s"; NAV_PREFIX <- "../"', rds), "```", "", "{{< include ../_page.qmd >}}"),
+           file.path("weeks", paste0(stem, ".qmd")), useBytes = TRUE)
 writeLines(c("---", 'title: "Archive"', 'subtitle: "Every weekly report, 2026"', "listing:", "  contents: weeks",
              '  sort: "date desc"', "  type: table", "  fields: [title, date]", "  sort-ui: false", "  filter-ui: false", "---"),
            "archive.qmd", useBytes = TRUE)
-
-# 1. Site pages
-for (f in c("index.qmd", page, "archive.qmd")) {
+pages <- c("index.qmd", "review.qmd", "sims.qmd", "money.qmd", "office.qmd", "teams.qmd", "alltime.qmd", file.path("weeks", paste0(stem, ".qmd")), "archive.qmd")
+for (f in pages) {
   st <- system2(QUARTO, c("render", f), stdout = "", stderr = "")
   if (st != 0) stop("Site render failed: ", f)
 }
 
-# 2. Self-contained copy: same report body, rendered outside the website project so it has no navbar
+# 3. share copy: every section on one page, outside the website project (no navbar)
 tmp <- file.path(tempdir(), "f1c-share"); unlink(tmp, recursive = TRUE); dir.create(tmp)
 file.copy("styles.scss", tmp)
 root <- normalizePath(".", winslash = "/")
-body <- readLines("_weekly.qmd", encoding = "UTF-8")
 writeLines(c(
   "---", sprintf('title: "F1C Week %d"', WEEK), "format:", "  html:",
   "    theme: [darkly, styles.scss]", "    embed-resources: true", "    toc: false", "    page-layout: article",
@@ -41,11 +48,16 @@ writeLines(c(
   '        <meta name="viewport" content="width=device-width, initial-scale=1">',
   "execute:", "  echo: false", "  warning: false", "  message: false",
   "knitr:", "  opts_knit:", sprintf('    root.dir: "%s"', root), "---", "",
-  "```{r}", sprintf("WEEK <- %d", WEEK), "```", "", body),
+  "```{r}",
+  'for (f in c("data", "ui", "sim", "brand", "report", "card", "standings_section", "sim_section", "money_section", "sections")) source(file.path("R", paste0(f, ".R")))',
+  sprintf('D <- readRDS("%s")', rds),
+  'tagList(page_head(D, "Weekly Report", "Fantasy1 Championship Weekly"), page_nav("", function(p) paste0("#pg-", p)),',
+  '  lapply(names(PAGES), function(p) tags$div(id = paste0("pg-", p), class = "share-sec", tags$div(class = "share-kick", PAGES[[p]]), section_body(p, D))), page_foot(D))',
+  "```"),
   file.path(tmp, "share.qmd"), useBytes = TRUE)
 st <- system2(QUARTO, c("render", shQuote(file.path(tmp, "share.qmd"))), stdout = "", stderr = "")
 if (st != 0) stop("Share render failed")
 dir.create("share", showWarnings = FALSE)
 out <- file.path("share", sprintf("F1C-Week-%02d.html", WEEK))
 file.copy(file.path(tmp, "share.html"), out, overwrite = TRUE)
-message("Site page: docs/weeks/", stem, ".html\nShare copy: ", out, " (", round(file.size(out) / 1e6, 1), " MB)")
+message("Site: docs/index.html (+ review, sims, money, office, teams, alltime)\nShare copy: ", out, " (", round(file.size(out) / 1e6, 1), " MB)")

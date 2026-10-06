@@ -1,11 +1,10 @@
 ---
 title: "Week 4"
-subtitle: "Fantasy1 Championship · 2026"
-date: 2026-10-05
+date: 2026-10-06
 ---
 
 ```{r}
-WEEK <- 4
+PAGE <- "index"; REPORT_FILE <- "data/cache/report-w04.rds"; NAV_PREFIX <- "../"
 ```
 
-{{< include ../_weekly.qmd >}}
+{{< include ../_page.qmd >}}

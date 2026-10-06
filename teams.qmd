@@ -1,0 +1,9 @@
+---
+title: "Team Pages"
+---
+
+```{r}
+PAGE <- "teams"
+```
+
+{{< include _page.qmd >}}

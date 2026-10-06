@@ -238,3 +238,69 @@ ul.ad-sports li { font-size: .72rem; font-weight: 600; color: #e8e8e8; border: 1
 .ad img { width: 40px; height: 40px; border-radius: 6px; }
 .ad-title { font-size: .95rem; }
 .ad-body { font-size: .76rem; line-height: 1.45; }
+
+// ==== Full report (all sections, locked 6 Oct 2026) =================================
+.toc-bar a.on { color: #0a0a0a; background: var(--gold); border-color: var(--gold); font-weight: 600; }
+.pos-v { color: #82E0AA; } .neg-v { color: #F1948A; }
+.gold { color: var(--gold); }
+.big.neg { color: #F1948A; }
+.slot-g { color: var(--gold); font-size: .68rem; font-weight: 700; letter-spacing: .06em; }
+.fact-line { font-size: .84rem; color: #cfcfcf; margin-top: .7rem; line-height: 1.5; }
+.fact-line b { color: #fff; }
+.pg-foot { display: flex; justify-content: space-between; gap: .8rem; flex-wrap: wrap; font-size: .72rem; color: var(--faint);
+  border-top: 1px solid var(--line); margin-top: 2.4rem; padding-top: .9rem; }
+.pg-foot b { color: var(--gold); font-weight: 600; }
+table.mt thead tr.grp th { border-bottom: 0; padding-bottom: 0; }
+table.mt thead tr.grp th.g { color: var(--gold); text-align: center; border-bottom: 1px solid #3a3210; font-size: .56rem; }
+table.mt.res tbody tr:nth-child(6) td { border-bottom: 1px dashed var(--gold); }
+table.mt.cap, table.mt.fa, table.mt.at { font-size: .74rem; }
+table.mt.cap th, table.mt.cap td, table.mt.fa th, table.mt.fa td, table.mt.at th, table.mt.at td { padding-left: .1rem; padding-right: .1rem; }
+.bar { display: inline-block; width: 2.2rem; height: 6px; background: #1c1c1c; border-radius: 3px; margin-right: .35rem; vertical-align: middle; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--gold); border-radius: 3px; }
+.bar.wide { width: 100%; }
+.tow-total { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid #333; padding-top: .55rem; margin-top: .2rem; font-size: .78rem; color: var(--muted); }
+.tow-total b { font-size: 1.3rem; color: var(--gold); }
+.tiles.four { grid-template-columns: repeat(4, 1fr); }
+.tiles.five { grid-template-columns: repeat(5, 1fr); gap: .35rem; }
+.tiles.five .tile { padding: .5rem .45rem; } .tiles.five .tile-val { font-size: .95rem; }
+.tag-tiles .tile { border-color: #4a3f12; } .tag-tiles .tile-val { color: var(--gold); }
+.mv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+@media (max-width: 420px) { .mv-grid { grid-template-columns: 1fr; } }
+.mv-card { background: #141414; border: 1px solid #242424; border-radius: 12px; padding: .65rem .75rem; min-width: 0; }
+.mv-name { font-weight: 700; color: #fff; font-size: .9rem; margin-bottom: .3rem; }
+.mv-card ul { list-style: none; padding: 0; margin: 0; }
+.mv-card li { display: flex; justify-content: space-between; gap: .4rem; font-size: .78rem; padding: .12rem 0; }
+.mv-card li small { color: var(--faint); }
+.mv-card li.add > span { color: #82E0AA; } .mv-card li.drop > span { color: #F1948A; } .mv-card li.trade > span { color: var(--gold); }
+.newbox { background: #141414; border: 1px solid #242424; border-radius: 12px; padding: .75rem .9rem; margin-top: .9rem; font-size: .82rem; color: #d6d6d6; }
+.newbox ul { margin: .3rem 0 0; padding-left: 1rem; }
+.team-jump { display: flex; flex-wrap: wrap; gap: .35rem; margin: 1rem 0 .4rem; }
+.team-jump a { font-size: .72rem; color: var(--muted); border: 1px solid #262626; border-radius: 999px; padding: .15rem .55rem; text-decoration: none; }
+.tp-page { border-top: 1px solid var(--line); padding-top: 1.6rem; margin-top: 1.6rem; scroll-margin-top: 3rem; }
+.tp-kick { color: var(--gold); font-size: .62rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.tp-owner { font-size: 1.6rem; font-weight: 800; color: #fff; letter-spacing: -.02em; margin-top: .2rem; }
+.tp-fr { color: var(--muted); font-size: .84rem; margin-bottom: .8rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .45rem; }
+.chip-w { display: flex; flex-direction: column; align-items: center; gap: .15rem; font-size: .66rem; color: var(--faint); }
+.chip { min-width: 2.6rem; text-align: center; border-radius: 8px; padding: .3rem .4rem; font-weight: 700; font-size: .8rem; }
+.chip.win { background: var(--gold); color: #0a0a0a; } .chip.pod { background: #7A6420; color: #fff; }
+.chip.pts { background: #2E2E2E; color: #fff; } .chip.out { background: #141414; color: #777; border: 1px solid #242424; }
+.chip-s { color: #cfcfcf; font-size: .7rem; }
+.tp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.tp-cols > div { min-width: 0; }
+@media (max-width: 480px) { .tp-cols { grid-template-columns: 1fr; gap: 0; } }
+.tp-list { display: flex; flex-direction: column; }
+.tp-row { display: flex; justify-content: space-between; gap: .5rem; font-size: .82rem; padding: .38rem 0; border-bottom: 1px solid var(--line); color: #cfcfcf; }
+.tp-row small { color: var(--faint); margin-left: .35rem; }
+.tp-row b { color: #fff; white-space: nowrap; }
+.seasons { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; }
+.season { background: #141414; border: 1px solid #242424; border-radius: 10px; text-align: center; padding: .4rem 0; font-size: .66rem; color: var(--faint); display: flex; flex-direction: column; }
+.season b { color: #fff; font-size: .9rem; } .season.champ { border-color: var(--gold); } .season.champ b { color: var(--gold); }
+.ch-grid { display: grid; grid-template-columns: 1fr; gap: .5rem; }
+.ch-card { background: #141414; border: 1px solid #242424; border-radius: 12px; padding: .75rem .9rem; }
+.ch-year { color: var(--gold); font-size: .66rem; font-weight: 700; letter-spacing: .14em; }
+.ch-name { font-size: 1.1rem; font-weight: 800; color: #fff; display: flex; justify-content: space-between; align-items: baseline; margin: .15rem 0; }
+.ch-name span { color: var(--gold); font-size: .9rem; }
+.ch-rest { font-size: .78rem; color: var(--muted); }
+.share-sec { border-top: 2px solid #3a3210; margin-top: 2.4rem; padding-top: .4rem; scroll-margin-top: 3rem; }
+.share-kick { color: var(--gold); font-size: .7rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }

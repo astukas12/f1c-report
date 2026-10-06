@@ -1,0 +1,9 @@
+---
+title: "All-Time"
+---
+
+```{r}
+PAGE <- "alltime"
+```
+
+{{< include _page.qmd >}}

@@ -1,0 +1,9 @@
+---
+title: "Money & Cap"
+---
+
+```{r}
+PAGE <- "money"
+```
+
+{{< include _page.qmd >}}
