@@ -135,7 +135,7 @@ cap_card <- function(cap, week, my_id) {
 
 pct <- function(x) if (x >= 99.5) "99%" else if (x < 1) "<1%" else paste0(round(x), "%")
 
-odds_card <- function(sim, week, my_id, note = "") {
+odds_card <- function(sim, week, note = "") {
   grid <- "grid-template-columns: 30px 1fr 44px 40px 40px 40px 56px;"
   rows <- paste0(vapply(seq_len(nrow(sim)), function(i) {
     r <- sim[i, ]

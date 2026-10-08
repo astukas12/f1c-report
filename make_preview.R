@@ -29,7 +29,7 @@ note <- paste0(format(attr(PROJ, "updated"), "%a %b %e, %l:%M %p"), " · ",
 
 dir.create("cards", showWarnings = FALSE)
 out <- sprintf("cards/week-%02d-preview.png", WEEK)
-shoot(odds_card(sim, WEEK, MY_TEAM, note), out)
+shoot(odds_card(sim, WEEK, note), out)
 
 print(as.data.frame(sim %>% select(Pos, Name, proj, mean, win, top3, top6, expF1)), row.names = FALSE)
 message("\nCard written: ", out)

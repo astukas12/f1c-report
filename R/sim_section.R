@@ -52,3 +52,19 @@ next_week_block <- function(week) {
       div(class = "soon-t", "Coming Thursday, with updates after every game window."),
       div(class = "soon-s", sprintf("Projected finish, win, podium and top-6 odds for every team, %s sims.", format(SIM_N, big.mark = ","))))
 }
+
+# Next week's ETR sim, all 12 teams by expected F1. No team highlighted: the report goes to the whole league.
+week_sim_table <- function(s) {
+  up <- format(attr(s, "updated"), "%a %b %d, %I:%M %p", tz = "America/New_York")
+  up <- gsub(" 0", " ", up)
+  o <- s %>% arrange(desc(expF1)) %>%
+    mutate(team = pmap_chr(list(Name, Franchise), function(n, f) team_cell(n, htmlEscape(f))),
+           pj = round(proj), avg = round(mean),
+           w = paste0('<span class="big">', pct_txt(win), '</span>'), t3 = pct_txt(top3), t6 = pct_txt(top6),
+           ef = sprintf("%.1f", expF1))
+  tagList(
+    p(class = "dek", HTML(sprintf("From %s simulated weeks · ETR projections · updated %s ET", format(SIM_N, big.mark = ","), up))),
+    mtable(o, list(Team = "team", Proj = "pj", Avg = "avg", "Win" = "w", "Top 3" = "t3", "Top 6" = "t6", "Exp F1" = "ef"),
+           left = 1, widths = c(NA, "2.3rem", "2.3rem", "2.9rem", "2.6rem", "2.6rem", "2.9rem")),
+    div(class = "note", "Golden Ticket Sims take over Sunday morning, with actual scores added after every game window."))
+}

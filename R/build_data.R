@@ -20,6 +20,7 @@ build_report_data <- function(WEEK) {
   # sims
   ohist <- ros_history(lu, res, lg, WEEK)
   wsim  <- { f <- sprintf("cards/week-%02d-sim.csv", WEEK); if (file.exists(f)) read.csv(f, stringsAsFactors = FALSE, colClasses = c(franchise_id = "character")) else NULL }
+  wnext <- next_week_sim(WEEK)
 
   # money and moves
   cc   <- cap_check(lg, st)
@@ -39,6 +40,15 @@ build_report_data <- function(WEEK) {
 
   list(WEEK = WEEK, built = Sys.time(), teams = lg$teams, weekly_lookup = lg$weekly, seasonal_lookup = lg$seasonal,
        res = res, lu = lu, st = st, prev_st = prev_st, ros = ros,
-       hp = hp, hall = hall, hplay = hplay, ohist = ohist, wsim = wsim,
+       hp = hp, hall = hall, hplay = hplay, ohist = ohist, wsim = wsim, wnext = wnext,
        cc = cc, tags = tags, fas = fas, ytd = ytd, trd = trd, tx = tx, faab = faab, moves = moves)
+}
+
+# Next week's ETR sim (cards/week-NN-sim.csv from make_preview.R), stamped with when it was run.
+next_week_sim <- function(WEEK) {
+  f <- sprintf("cards/week-%02d-sim.csv", WEEK + 1)
+  if (!file.exists(f)) return(NULL)
+  s <- read.csv(f, stringsAsFactors = FALSE, colClasses = c(franchise_id = "character"))
+  attr(s, "updated") <- file.mtime(f)
+  s
 }

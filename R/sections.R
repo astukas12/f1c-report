@@ -166,13 +166,13 @@ section_sims <- function(D) {
         p(class = "dek", sprintf("%s simulated finishes to the season, from this season's results only.", format(ROS_N, big.mark = ","))),
         tbl, div(class = "note", "Title = most F1 points after week 18. Wk = change in title odds since last week. Sims by Golden Ticket Sims.")),
     sec("oddsweek", "Title Odds by Week", kicker = "GTS Sim Center", p(class = "dek", "Each week's odds, rerun with the results to that point."),
-        svg_chart(p, h = 3.8), div(class = "key", HTML('<span><i class="sw" style="background:#3a3a3a"></i>Others under 1%</span>'))),
+        svg_chart(p, h = 3.8), div(class = "key", HTML('<span><i class="sw" style="background:#3a3a3a"></i>Others under 1%</span>')), div(class = "note", "How it works: each team's weekly scoring level is its average so far. Every simulated week draws a score for each team, ranks the 12 and awards 15/10/7/4/2/1 F1 points. A team's level can drift week to week (injuries, trades, waivers), so nothing is locked in. Checked against 2022, 2023 and 2025.")),
     sec("nextweek", sprintf("Week %d Sims", W + 1), kicker = "GTS Sim Center",
-        div(class = "soon", div(class = "soon-k", "GTS Sim Center"),
+        if (is.null(D$wnext)) div(class = "soon", div(class = "soon-k", "GTS Sim Center"),
             div(class = "soon-t", "Coming Thursday, with updates after every game window."),
-            div(class = "soon-s", sprintf("Projected finish, win, podium and top-6 odds for every team, from %s simulated weeks.", format(SIM_N, big.mark = ",")))),
-        div(class = "note", "How it works: each team's weekly scoring level is its average so far. Every simulated week draws a score for each team, ranks the 12 and awards 15/10/7/4/2/1 F1 points. A team's level can drift week to week (injuries, trades, waivers), so nothing is locked in. Checked against 2022, 2023 and 2025."),
-        ad_card(), div(class = "note", "Sims by Golden Ticket Sims.")))
+            div(class = "soon-s", sprintf("Projected finish, win, podium and top-6 odds for every team, from %s simulated weeks.", format(SIM_N, big.mark = ","))))
+        else week_sim_table(D$wnext),
+        ad_card(), if (is.null(D$wnext)) div(class = "note", "Sims by Golden Ticket Sims.")))
 }
 
 # ---- 4. Money & Cap ---------------------------------------------------------------------------

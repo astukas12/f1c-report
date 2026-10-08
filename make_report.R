@@ -19,12 +19,17 @@ if (!"--render-only" %in% args) {
   D <- build_report_data(WEEK)
   saveRDS(D, rds)
   message("Data built: ", rds)
+} else {
+  D <- readRDS(rds); D$wnext <- next_week_sim(WEEK); saveRDS(D, rds)   # pick up a fresh make_preview.R run
 }
+if (!is.null(readRDS(rds)$wnext)) message("Week ", WEEK + 1, " sim: cards/", sprintf("week-%02d-sim.csv", WEEK + 1))
 file.copy(rds, "data/cache/report-latest.rds", overwrite = TRUE)
 
 # 2. site: section pages read report-latest; the week's archive page reads its own week's file
 stem <- sprintf("week-%02d", WEEK)
-writeLines(c("---", sprintf('title: "Week %d"', WEEK), sprintf("date: %s", Sys.Date()), "---", "", "```{r}",
+wq <- file.path("weeks", paste0(stem, ".qmd"))
+wdate <- if (file.exists(wq)) sub("^date: ", "", grep("^date: ", readLines(wq), value = TRUE)[1]) else as.character(Sys.Date())   # re-runs keep the week's first date
+writeLines(c("---", sprintf('title: "Week %d"', WEEK), sprintf("date: %s", wdate), "---", "", "```{r}",
              sprintf('PAGE <- "index"; REPORT_FILE <- "%s"; NAV_PREFIX <- "../"', rds), "```", "", "{{< include ../_page.qmd >}}"),
            file.path("weeks", paste0(stem, ".qmd")), useBytes = TRUE)
 writeLines(c("---", 'title: "Archive"', 'subtitle: "Every weekly report, 2026"', "listing:", "  contents: weeks",
