@@ -9,3 +9,4 @@ _freeze/
 .Rproj.user/
 /.quarto/
 **/*.quarto_ipynb
+data/etr/
