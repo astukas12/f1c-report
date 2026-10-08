@@ -157,12 +157,48 @@ odds_card <- function(sim, week, note = "") {
      </div>', week, grid, rows, esc(note)))
 }
 
-shoot <- function(html, png) {
+# Shareable Week sims image for WhatsApp: the Sims-page table plus the GTS ad, 540 x h (1080 x 2h PNG).
+sims_share_card <- function(sim, week, updated, h = 760) {
+  grid <- "grid-template-columns: 1fr 34px 34px 46px 42px 42px 46px;"
+  sim <- sim[order(-sim$expF1), ]
+  rows <- paste0(vapply(seq_len(nrow(sim)), function(i) {
+    r <- sim[i, ]
+    sprintf('<div class="row" style="%s"><div class="name">%s<span class="fr">%s</span></div><div class="num">%d</div><div class="num">%d</div><div class="num win%s">%s</div><div class="num">%s</div><div class="num">%s</div><div class="ef">%s</div></div>',
+            grid, esc(r$Name), esc(r$Franchise), round(r$proj), round(r$mean),
+            if (r$win < 1) " zero" else "", pct(r$win), pct(r$top3), pct(r$top6), sprintf("%.1f", r$expF1))
+  }, ""), collapse = "")
+  sports <- paste(GTS_SPORTS, collapse = " · ")
+  html <- card_page(sprintf(
+    '<style>html, body { height: %dpx; }
+       .row { flex: 1; } .name { font-size: 15px; line-height: 1.15; } .name .fr { display: block; font-size: 11px; font-weight: 400; color: #6a6a6a; overflow: hidden; text-overflow: ellipsis; }
+       .num { font-size: 13px; } .num.win { font-size: 15px; font-weight: 700; color: #fff; } .num.win.zero { color: #555; font-weight: 600; }
+       .ef { text-align: right; font-size: 16px; font-weight: 700; color: #E8C547; font-feature-settings: "tnum" 1; }
+       .dek { color: #8a8a8a; font-size: 11px; margin: 10px 0 0; }
+       .ad { display: flex; gap: 12px; align-items: center; border: 1px solid #3a3210; border-radius: 10px; padding: 11px 13px; margin: 14px 0 10px; }
+       .ad img { width: 44px; height: 44px; border-radius: 6px; }
+       .ad-k { color: #E8C547; font-size: 9px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
+       .ad-t { color: #fff; font-size: 15px; font-weight: 700; margin: 2px 0 2px; }
+       .ad-b { color: #9a9a9a; font-size: 11px; }
+       .ad-p { display: inline-block; margin-top: 5px; font-size: 11px; font-weight: 700; color: #0a0a0a; background: #E8C547; border-radius: 4px; padding: 1px 6px; }
+     </style>
+     <div class="card">
+       <div class="head"><div><div class="kicker">Fantasy1 Championship · Week %d Sims</div><div class="title">Projected Finish</div></div><img class="logo" src="{{LOGO}}"></div>
+       <div class="cols" style="%s"><div>Team</div><div class="r">Proj</div><div class="r">Avg</div><div class="r">Win</div><div class="r">Top 3</div><div class="r">Top 6</div><div class="r">Exp F1</div></div>
+       <div class="rows">%s</div>
+       <div class="dek">From %s simulated weeks · ETR projections · updated %s ET</div>
+       <div class="ad"><img src="{{LOGO}}"><div><div class="ad-k">Golden Ticket Sims</div><div class="ad-t">Simulations for DraftKings contests.</div><div class="ad-b">%s</div><div class="ad-p">%s</div></div></div>
+       <div class="foot"><span></span><span>Golden Ticket Sims</span></div>
+     </div>', h, week, grid, rows, format(SIM_N, big.mark = ","),
+    gsub(" 0", " ", format(updated, "%a %b %d, %I:%M %p", tz = "America/New_York")), sports, GTS_PRICE))
+  sub("height: 675px", sprintf("height: %dpx", h), html, fixed = TRUE)
+}
+
+shoot <- function(html, png, h = 675) {
   src <- tempfile(fileext = ".html")
   writeLines(html, src, useBytes = TRUE)
   png <- normalizePath(png, mustWork = FALSE)
   system2(EDGE, c("--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=2",
-                  "--window-size=540,675", "--virtual-time-budget=4000",
+                  sprintf("--window-size=540,%d", h), "--virtual-time-budget=4000",
                   shQuote(paste0("--screenshot=", png)), shQuote(paste0("file:///", normalizePath(src, "/")))),
           stdout = FALSE, stderr = FALSE)
   png

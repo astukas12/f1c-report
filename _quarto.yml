@@ -2,6 +2,8 @@ project:
   type: website
   output-dir: docs
   execute-dir: project
+  resources:
+    - img/*.png
   render:
     - index.qmd
     - review.qmd

@@ -13,6 +13,8 @@ source("R/ui.R")
 source("R/card.R")
 source("R/sim.R")
 
+SHARE_H <- 760   # share image height in CSS px (PNG is 2x)
+
 WEEK <- if (length(args)) as.integer(args[1]) else stop("Pass the week number, e.g. Rscript make_preview.R 3")
 PROJ <- if (length(args) > 1) read_etr(args[2]) else read_etr()
 
@@ -35,3 +37,11 @@ print(as.data.frame(sim %>% select(Pos, Name, proj, mean, win, top3, top6, expF1
 message("\nCard written: ", out)
 if (missing > 0) message(missing, " rostered players have no ETR projection (out / inactive) — they score 0.")
 write.csv(sim, sprintf("cards/week-%02d-sim.csv", WEEK), row.names = FALSE)
+
+# Shareable sims image (table + GTS ad), also published with the site at img/week-NN-sims.png
+source("R/brand.R")
+share <- sprintf("cards/week-%02d-sims-share.png", WEEK)
+shoot(sims_share_card(sim, WEEK, file.mtime(sprintf("cards/week-%02d-sim.csv", WEEK)), h = SHARE_H), share, h = SHARE_H)
+dir.create("img", showWarnings = FALSE); dir.create("docs/img", showWarnings = FALSE)
+for (d in c("img", "docs/img")) file.copy(share, sprintf("%s/week-%02d-sims.png", d, WEEK), overwrite = TRUE)
+message("Share image: ", share, " (+ img/, docs/img/)")
