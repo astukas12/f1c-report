@@ -36,6 +36,7 @@ shoot(odds_card(sim, WEEK, note), out)
 print(as.data.frame(sim %>% select(Pos, Name, proj, mean, win, top3, top6, expF1)), row.names = FALSE)
 message("\nCard written: ", out)
 if (missing > 0) message(missing, " rostered players have no ETR projection (out / inactive) — they score 0.")
+sim$final <- paste(done, collapse = " ")   # NFL teams already final, shown on the page and share image
 write.csv(sim, sprintf("cards/week-%02d-sim.csv", WEEK), row.names = FALSE)
 
 # Shareable sims image (table + GTS ad), also published with the site at img/week-NN-sims.png

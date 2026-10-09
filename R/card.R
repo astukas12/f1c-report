@@ -173,7 +173,7 @@ sims_share_card <- function(sim, week, updated, h = 760) {
        .row { flex: 1; } .name { font-size: 15px; line-height: 1.15; } .name .fr { display: block; font-size: 11px; font-weight: 400; color: #6a6a6a; overflow: hidden; text-overflow: ellipsis; }
        .num { font-size: 13px; } .num.win { font-size: 15px; font-weight: 700; color: #fff; } .num.win.zero { color: #555; font-weight: 600; }
        .ef { text-align: right; font-size: 16px; font-weight: 700; color: #E8C547; font-feature-settings: "tnum" 1; }
-       .dek { color: #8a8a8a; font-size: 11px; margin: 10px 0 0; }
+       .dek { color: #8a8a8a; font-size: 10.5px; margin: 10px 0 0; white-space: nowrap; }
        .ad { display: flex; gap: 12px; align-items: center; border: 1px solid #3a3210; border-radius: 10px; padding: 11px 13px; margin: 14px 0 10px; }
        .ad img { width: 44px; height: 44px; border-radius: 6px; }
        .ad-k { color: #E8C547; font-size: 9px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
@@ -185,11 +185,12 @@ sims_share_card <- function(sim, week, updated, h = 760) {
        <div class="head"><div><div class="kicker">Fantasy1 Championship · Week %d Sims</div><div class="title">Projected Finish</div></div><img class="logo" src="{{LOGO}}"></div>
        <div class="cols" style="%s"><div>Team</div><div class="r">Proj</div><div class="r">Avg</div><div class="r">Win</div><div class="r">Top 3</div><div class="r">Top 6</div><div class="r">Exp F1</div></div>
        <div class="rows">%s</div>
-       <div class="dek">From %s simulated weeks · ETR projections · updated %s ET</div>
+       <div class="dek">From %s simulated weeks · ETR projections · updated %s</div>
        <div class="ad"><img src="{{LOGO}}"><div><div class="ad-k">Golden Ticket Sims</div><div class="ad-t">Simulations for DraftKings contests.</div><div class="ad-b">%s</div><div class="ad-p">%s</div></div></div>
        <div class="foot"><span></span><span>Golden Ticket Sims</span></div>
      </div>', h, week, grid, rows, format(SIM_N, big.mark = ","),
-    gsub(" 0", " ", format(updated, "%a %b %d, %I:%M %p", tz = "America/New_York")), sports, GTS_PRICE))
+    paste0(gsub(" 0", " ", format(updated, "%a %b %d, %I:%M %p", tz = "America/New_York")), " ET",
+           if (!is.null(sim$final) && !is.na(sim$final[1]) && nzchar(sim$final[1])) paste0(" · ", sim$final[1], " final") else ""), sports, GTS_PRICE))
   sub("height: 675px", sprintf("height: %dpx", h), html, fixed = TRUE)
 }
 

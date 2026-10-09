@@ -70,13 +70,15 @@ sim_board <- function(lg, week, proj = NULL) {
            player_id = as.character(player_id),
            k = sim_key(Player), lk = sim_key(word(ln, -1)), nfl = norm_team(team))
 
-  ps <- mfl_getendpoint(lg$conn, "playerScores", W = week)$content$playerScores$playerScore
-  if (!is.null(ps) && !is.null(names(ps))) ps <- list(ps)
-  act <- tibble(player_id = character(), actual = numeric())
-  if (length(ps)) act <- bind_rows(lapply(ps, function(z)
-    tibble(player_id = as.character(z$id), actual = as.numeric(z$score))))
-  played <- act %>% left_join(lg$players %>% select(player_id, nfl), by = "player_id") %>%
-    filter(!is.na(nfl), actual != 0) %>% pull(nfl) %>% unique()
+  # Actuals from liveScoring (playerScores stays empty until the week closes). A team's game is final
+  # once its players show 0 seconds left and some nonzero score (bye teams show 0 seconds and no scores).
+  fr <- mfl_getendpoint(lg$conn, "liveScoring", W = week, DETAILS = 1)$content$liveScoring$franchise
+  act <- bind_rows(lapply(fr, function(f) bind_rows(lapply(f$players$player, function(z)
+    tibble(player_id = as.character(z$id), actual = as.numeric(z$score), sec = as.numeric(z$gameSecondsRemaining))))))
+  act <- if (nrow(act)) distinct(act, player_id, .keep_all = TRUE) else tibble(player_id = character(), actual = numeric(), sec = numeric())
+  played <- act %>% left_join(lg$players %>% select(player_id, nfl), by = "player_id") %>% filter(!is.na(nfl)) %>%
+    group_by(nfl) %>% filter(all(sec == 0), any(actual != 0)) %>% pull(nfl) %>% unique()
+  act <- act %>% select(player_id, actual)
 
   ex <- ros %>% inner_join(proj %>% select(k, pos, med, ceil, slate, Opp), by = c("k", "pos"))
   fb <- ros %>% filter(!player_id %in% ex$player_id) %>%

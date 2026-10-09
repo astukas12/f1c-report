@@ -57,13 +57,14 @@ next_week_block <- function(week) {
 week_sim_table <- function(s) {
   up <- format(attr(s, "updated"), "%a %b %d, %I:%M %p", tz = "America/New_York")
   up <- gsub(" 0", " ", up)
+  fin <- if (!is.null(s$final) && !is.na(s$final[1]) && nzchar(s$final[1])) paste0(" · ", s$final[1], " final") else ""
   o <- s %>% arrange(desc(expF1)) %>%
     mutate(team = pmap_chr(list(Name, Franchise), function(n, f) team_cell(n, htmlEscape(f))),
            pj = round(proj), avg = round(mean),
            w = paste0('<span class="big">', pct_txt(win), '</span>'), t3 = pct_txt(top3), t6 = pct_txt(top6),
            ef = sprintf("%.1f", expF1))
   tagList(
-    p(class = "dek", HTML(sprintf("From %s simulated weeks · ETR projections · updated %s ET", format(SIM_N, big.mark = ","), up))),
+    p(class = "dek", HTML(sprintf("From %s simulated weeks · ETR projections · updated %s ET%s", format(SIM_N, big.mark = ","), up, fin))),
     mtable(o, list(Team = "team", Proj = "pj", Avg = "avg", "Win" = "w", "Top 3" = "t3", "Top 6" = "t6", "Exp F1" = "ef"),
            left = 1, widths = c(NA, "2.3rem", "2.3rem", "2.9rem", "2.6rem", "2.6rem", "2.9rem")),
     div(class = "note", "Golden Ticket Sims take over Sunday morning, with actual scores added after every game window."))
