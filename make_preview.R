@@ -55,7 +55,7 @@ if (!is.null(GTS)) {
   message("GTS: ", sum(board$src == "gts" & !is.na(board$gkey)), " rostered players matched; ", nrow(um), " rostered in GTS games but not in GTS",
           if (nrow(um)) paste0(" (score 0): ", paste0(um$Player, " ", um$nfl, " [ETR ", um$med, "]", collapse = ", ")) else "")
 }
-sim$final <- paste(done, collapse = " ")   # NFL teams already final, shown on the page and share image
+sim$final <- if (length(done) > 4) sprintf("%d games", length(done) %/% 2) else paste(done, collapse = " ")   # "10 games final" once the list gets long   # NFL teams already final, shown on the page and share image
 write.csv(sim, sprintf("cards/week-%02d-sim.csv", WEEK), row.names = FALSE)
 
 # Shareable sims image (table + GTS ad), also published with the site at img/week-NN-sims.png
