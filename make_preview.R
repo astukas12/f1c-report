@@ -6,6 +6,10 @@
 # Pass a path as the second argument to use a specific file.
 
 args <- commandArgs(trailingOnly = TRUE)
+# --final PHI,JAX locks those NFL teams to their current MFL scores when MFL's game clock lags
+fi <- which(args == "--final")
+FINAL <- if (length(fi)) strsplit(args[fi + 1], ",")[[1]] else character()
+if (length(fi)) args <- args[-c(fi, fi + 1)]
 setwd(dirname(normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)))))
 
 source("R/data.R")
@@ -25,7 +29,7 @@ if (!is.null(GTS)) message("GTS: ", length(attr(GTS, "games")), " games, ", form
                            " sims (", format(attr(GTS, "built"), "%a %I:%M %p"), "): ", paste(attr(GTS, "games"), collapse = " "))
 
 lg    <- load_league()
-board <- sim_board(lg, WEEK, PROJ, GTS)
+board <- sim_board(lg, WEEK, PROJ, GTS, final = FINAL)
 sim   <- sim_week(lg, WEEK, board, gts = GTS)
 
 done    <- sort(unique(board$nfl[board$done]))

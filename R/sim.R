@@ -71,7 +71,7 @@ load_gts <- function(week) {
 
 # Rosters joined to projections, with actual scores locked in for finished games.
 # Source per player: actual (game final) > GTS draws (games GTS covers) > ETR lognormal.
-sim_board <- function(lg, week, proj = NULL, gts = NULL) {
+sim_board <- function(lg, week, proj = NULL, gts = NULL, final = character()) {
   proj <- proj %||% read_etr()
   ros <- ff_rosters(lg$conn) %>% filter(pos %in% SKILL) %>%
     mutate(ln = str_trim(str_extract(player_name, "^[^,]+")),
@@ -88,6 +88,7 @@ sim_board <- function(lg, week, proj = NULL, gts = NULL) {
   act <- if (nrow(act)) distinct(act, player_id, .keep_all = TRUE) else tibble(player_id = character(), actual = numeric(), sec = numeric())
   played <- act %>% left_join(lg$players %>% select(player_id, nfl), by = "player_id") %>% filter(!is.na(nfl)) %>%
     group_by(nfl) %>% filter(all(sec == 0), any(actual != 0)) %>% pull(nfl) %>% unique()
+  played <- union(played, final)   # --final: games known to be over before MFL's clock says so
   act <- act %>% select(player_id, actual)
 
   ex <- ros %>% inner_join(proj %>% select(k, pos, med, ceil, slate, Opp), by = c("k", "pos"))
