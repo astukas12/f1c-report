@@ -60,8 +60,18 @@ sim_fill <- function(v, pos) {
   slot
 }
 
+# GTS sims (make_gts.R): every simulated F1C points line for each player in the games GTS covers.
+load_gts <- function(week) {
+  f <- sprintf("data/gts/week-%02d-gts.rds", week)
+  if (!file.exists(f)) return(NULL)
+  g <- readRDS(f)
+  g$team <- norm_team(g$team)
+  g
+}
+
 # Rosters joined to projections, with actual scores locked in for finished games.
-sim_board <- function(lg, week, proj = NULL) {
+# Source per player: actual (game final) > GTS draws (games GTS covers) > ETR lognormal.
+sim_board <- function(lg, week, proj = NULL, gts = NULL) {
   proj <- proj %||% read_etr()
   ros <- ff_rosters(lg$conn) %>% filter(pos %in% SKILL) %>%
     mutate(ln = str_trim(str_extract(player_name, "^[^,]+")),
@@ -87,28 +97,55 @@ sim_board <- function(lg, week, proj = NULL) {
   miss <- ros %>% filter(!player_id %in% c(ex$player_id, fb$player_id)) %>%
     mutate(med = 0, ceil = 0, slate = "OUT", Opp = "")
 
-  bind_rows(ex, fb, miss) %>%
+  b <- bind_rows(ex, fb, miss) %>% mutate(gkey = NA_character_, gmean = NA_real_)
+  if (!is.null(gts)) {
+    gp <- gts %>% group_by(player, team, game) %>% summarise(gmean = round(mean(pts), 1), .groups = "drop") %>%
+      mutate(k = sim_key(player), lk = sim_key(word(player, -1)), gkey = paste(player, team, sep = "|"))
+    gteams <- unique(gp$team)
+    m1 <- b %>% select(player_id, k, nfl) %>% inner_join(gp %>% select(k, nfl = team, gkey, gmean), by = c("k", "nfl")) %>%
+      group_by(player_id) %>% filter(n() == 1) %>% ungroup()
+    m2 <- b %>% filter(!player_id %in% m1$player_id) %>% select(player_id, lk, nfl) %>%
+      inner_join(gp %>% select(lk, nfl = team, gkey, gmean), by = c("lk", "nfl")) %>%
+      group_by(player_id) %>% filter(n() == 1) %>% ungroup()
+    m <- bind_rows(m1, m2) %>% select(player_id, gkey, gmean)
+    b <- b %>% select(-gkey, -gmean) %>% left_join(m, by = "player_id") %>%
+      mutate(gts_team = nfl %in% gteams)
+  } else b$gts_team <- FALSE
+
+  b %>%
     left_join(act, by = "player_id") %>%
     mutate(done   = nfl %in% played,
+           src    = ifelse(done, "actual", ifelse(gts_team, "gts", "etr")),
            actual = ifelse(done, coalesce(actual, 0), NA_real_),
-           value  = ifelse(done, actual, med),
+           value  = ifelse(done, actual, ifelse(src == "gts", coalesce(gmean, 0), med)),
            sigma  = ifelse(med > 0 & ceil > med, log(ceil / med) / Z90, SIG_DEF)) %>%
     group_by(franchise_id) %>% mutate(slot = sim_fill(value, pos)) %>% ungroup() %>%
     left_join(lg$teams, by = "franchise_id")
 }
 
-sim_week <- function(lg, week, board = NULL, nsim = SIM_N, seed = 42) {
-  board <- board %||% sim_board(lg, week)
+sim_week <- function(lg, week, board = NULL, nsim = SIM_N, seed = 42, gts = NULL) {
+  board <- board %||% sim_board(lg, week, gts = gts)
   set.seed(seed)
   ids <- sort(unique(board$franchise_id))
+  gdraw <- NULL
+  # GTS: one SimID per simulated week, shared by every GTS player, so players in the same game
+  # (on any F1C team) come from the same simulated game. Fewer GTS sims than nsim: resampled.
+  if (!is.null(gts) && any(board$src == "gts" & !is.na(board$gkey))) {
+    sims  <- sort(unique(gts$SimID))
+    pick  <- sims[sample.int(length(sims), nsim, replace = length(sims) < nsim)]
+    need  <- unique(board$gkey[board$src == "gts" & !is.na(board$gkey)])
+    gw    <- gts %>% mutate(gkey = paste(player, team, sep = "|")) %>% filter(gkey %in% need)
+    gdraw <- lapply(split(gw, gw$gkey), function(d) { v <- numeric(max(sims)); v[d$SimID] <- d$pts; v[pick] })
+  }
   scores <- sapply(ids, function(fid) {
     d <- board %>% filter(franchise_id == fid)
     m <- matrix(0, nsim, nrow(d))
-    live <- which(!d$done & d$med > 0)
+    live <- which(d$src == "etr" & d$med > 0)
     if (length(live))
       m[, live] <- matrix(d$med[live], nsim, length(live), byrow = TRUE) *
         exp(sweep(matrix(rnorm(nsim * length(live)), nsim), 2, d$sigma[live], "*") -
             matrix(d$sigma[live]^2 / 2, nsim, length(live), byrow = TRUE))
+    if (!is.null(gdraw)) for (j in which(d$src == "gts" & !is.na(d$gkey))) m[, j] <- gdraw[[d$gkey[j]]]
     fixed <- which(d$done)
     if (length(fixed)) m[, fixed] <- matrix(d$actual[fixed], nsim, length(fixed), byrow = TRUE)
     apply(m, 1, function(v) sum(v[!is.na(sim_fill(v, d$pos))]))

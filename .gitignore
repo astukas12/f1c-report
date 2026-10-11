@@ -10,3 +10,4 @@ _freeze/
 /.quarto/
 **/*.quarto_ipynb
 data/etr/
+data/gts/

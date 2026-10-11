@@ -64,7 +64,8 @@ week_sim_table <- function(s) {
            w = paste0('<span class="big">', pct_txt(win), '</span>'), t3 = pct_txt(top3), t6 = pct_txt(top6),
            ef = sprintf("%.1f", expF1))
   tagList(
-    p(class = "dek", HTML(sprintf("From %s simulated weeks · ETR projections · updated %s ET%s", format(SIM_N, big.mark = ","), up, fin))),
+    p(class = "dek", HTML(sprintf("From %s simulated weeks · %s%s · updated %s ET", format(SIM_N, big.mark = ","),
+                                  htmlEscape(if (!is.null(s$sources) && !is.na(s$sources[1])) s$sources[1] else "ETR projections"), fin, up))),
     mtable(o, list(Team = "team", Proj = "pj", Avg = "avg", "Win" = "w", "Top 3" = "t3", "Top 6" = "t6", "Exp F1" = "ef"),
            left = 1, widths = c(NA, "2.3rem", "2.3rem", "2.9rem", "2.6rem", "2.6rem", "2.9rem")),
     div(class = "note", "Golden Ticket Sims take over Sunday morning, with actual scores added after every game window."))
