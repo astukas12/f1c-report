@@ -12,7 +12,10 @@ F1C <- getwd()
 WEEK   <- as.integer(args[1])
 ni     <- which(args == "--sims")
 N_SIMS <- if (length(ni)) as.integer(args[ni + 1]) else 10000L
-SHEETS <- setdiff(args[-1], c("--sims", if (length(ni)) args[ni + 1]))
+gi_   <- which(args == "--games")
+ONLY   <- if (length(gi_)) strsplit(args[gi_ + 1], ",")[[1]] else NULL   # e.g. --games BAL@ATL
+ADD    <- "--add" %in% args   # merge into the existing file, replacing only the games simmed now
+SHEETS <- setdiff(args[-1], c("--sims", if (length(ni)) args[ni + 1], "--games", if (length(gi_)) args[gi_ + 1], "--add"))
 if (is.na(WEEK) || !length(SHEETS)) stop("Usage: Rscript make_gts.R <week> <slate_id> [<slate_id> ...] [--sims N]")
 
 GTS_SLATES <- "C:/Users/astuk/OneDrive/Documents/GTS/NFL/slates"
@@ -40,6 +43,7 @@ for (s in SHEETS) {
   info[[s]] <- list(file = xlsx, mtime = file.mtime(xlsx), games = paste(G$away, G$home, sep = "@"))
   for (i in seq_len(nrow(G))) {
     gi <- G[i]; tms <- c(gi$away, gi$home); key <- paste0(gi$away, "@", gi$home)
+    if (!is.null(ONLY) && !key %in% ONLY) next
     t0 <- Sys.time()
     sub <- list(game = gi, team = as.data.table(inp$team)[team %in% tms],
                 players = as.data.table(inp$players)[team %in% tms], projections = inp$projections)
@@ -58,7 +62,13 @@ for (s in SHEETS) {
 setwd(F1C)
 dir.create("data/gts", recursive = TRUE, showWarnings = FALSE)
 D <- rbindlist(out)
-attr(D, "n_sims") <- N_SIMS; attr(D, "games") <- games; attr(D, "sheets") <- info; attr(D, "built") <- Sys.time()
 f <- sprintf("data/gts/week-%02d-gts.rds", WEEK)
+if (ADD && file.exists(f)) {   # keep the other games' sims from the earlier run
+  old <- readRDS(f); keep <- setdiff(attr(old, "games"), games)
+  D <- rbindlist(list(as.data.table(old)[game %in% keep], D), use.names = TRUE)
+  info <- c(attr(old, "sheets"), info); games <- c(keep, games)
+  message("Kept from the earlier run: ", paste(keep, collapse = " "))
+}
+attr(D, "n_sims") <- N_SIMS; attr(D, "games") <- games; attr(D, "sheets") <- info; attr(D, "built") <- Sys.time()
 saveRDS(D, f)
 message("Saved ", f, ": ", length(games), " games, ", N_SIMS, " sims, ", uniqueN(D[, paste(player, team)]), " players")
