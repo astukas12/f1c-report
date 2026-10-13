@@ -19,7 +19,10 @@ build_report_data <- function(WEEK) {
 
   # sims
   ohist <- ros_history(lu, res, lg, WEEK)
-  wsim  <- { f <- sprintf("cards/week-%02d-sim.csv", WEEK); if (file.exists(f)) read.csv(f, stringsAsFactors = FALSE, colClasses = c(franchise_id = "character")) else NULL }
+  # Projected vs Actual needs the pre-kickoff sim: week-NN-sim-preview.csv (frozen before the first game).
+  # week-NN-sim.csv keeps updating with actuals through the week, so it is only a fallback.
+  wsim  <- { f <- sprintf("cards/week-%02d-sim-preview.csv", WEEK); if (!file.exists(f)) f <- sprintf("cards/week-%02d-sim.csv", WEEK)
+             if (file.exists(f)) read.csv(f, stringsAsFactors = FALSE, colClasses = c(franchise_id = "character")) else NULL }
   wnext <- next_week_sim(WEEK)
 
   # money and moves

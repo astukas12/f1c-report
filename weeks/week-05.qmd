@@ -1,0 +1,10 @@
+---
+title: "Week 5"
+date: 2026-10-12
+---
+
+```{r}
+PAGE <- "index"; REPORT_FILE <- "data/cache/report-w05.rds"; NAV_PREFIX <- "../"
+```
+
+{{< include ../_page.qmd >}}
