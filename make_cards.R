@@ -23,3 +23,10 @@ shoot(lineup_card(team_of_week(pl), WEEK, max(wk$points), sum(wk$pending)), past
 shoot(cap_card(cap_table(lg, st), WEEK, MY_TEAM), paste0(stem, "-cap.png"))
 message("Cards written: ", stem, "-standings.png, ", stem, "-team.png, ", stem, "-cap.png")
 if (sum(wk$pending) > 0) message("PROVISIONAL: ", sum(wk$pending), " players still to play. Rerun once the week is final.")
+
+# Final cards also go on the site (img/ and docs/img/; cards/ is git-ignored), e.g.
+# https://astukas12.github.io/f1c-report/img/week-05-standings.png once pushed
+if (sum(wk$pending) == 0) for (k in c("standings", "team", "cap")) for (d in c("img", "docs/img")) {
+  dir.create(d, showWarnings = FALSE, recursive = TRUE)
+  file.copy(sprintf("%s-%s.png", stem, k), file.path(d, sprintf("week-%02d-%s.png", WEEK, k)), overwrite = TRUE)
+}
