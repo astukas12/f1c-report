@@ -293,6 +293,17 @@ table.mt.cap th, table.mt.cap td, table.mt.fa th, table.mt.fa td, table.mt.at th
 .tp-row { display: flex; justify-content: space-between; gap: .5rem; font-size: .82rem; padding: .38rem 0; border-bottom: 1px solid var(--line); color: #cfcfcf; }
 .tp-row small { color: var(--faint); margin-left: .35rem; }
 .tp-row b { color: #fff; white-space: nowrap; }
+table.mt.ros { font-size: .74rem; }
+table.mt.ros th, table.mt.ros td { padding-left: .1rem; padding-right: .1rem; }
+table.mt.ros td { padding-top: .42rem; padding-bottom: .42rem; }
+table.mt.ros td .tn { font-weight: 700; }
+table.mt.ros th { white-space: normal; line-height: 1.15; vertical-align: bottom; font-size: .56rem; letter-spacing: .05em; }
+table.mt.ros .nw { white-space: nowrap; }
+table.mt.ros .lp { font-weight: 700; color: #fff; font-size: .84rem; }
+table.mt.ros tr.rg td { color: var(--gold); font-variant: small-caps; text-transform: lowercase; font-size: .8rem; font-weight: 700; letter-spacing: .1em;
+  padding-top: .9rem; padding-bottom: .2rem; border-bottom: 1px solid #3a3210; }
+table.mt.ros tbody tr.rg:first-child td { padding-top: .3rem; }
+@media (max-width: 480px) { table.mt.ros .tot { display: none; } }
 .seasons { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; }
 .season { background: #141414; border: 1px solid #242424; border-radius: 10px; text-align: center; padding: .4rem 0; font-size: .66rem; color: var(--faint); display: flex; flex-direction: column; }
 .season b { color: #fff; font-size: .9rem; } .season.champ { border-color: var(--gold); } .season.champ b { color: var(--gold); }

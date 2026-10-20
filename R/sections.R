@@ -276,7 +276,7 @@ team_history <- function(D) {
 }
 
 section_teams <- function(D) {
-  W <- D$WEEK; odds <- D$ohist %>% filter(week == W); H <- team_history(D)
+  W <- D$WEEK; odds <- D$ohist %>% filter(week == W); H <- team_history(D); rs <- roster_stats(D)
   slug <- function(n) paste0("t-", tolower(gsub("[^A-Za-z]", "", n)))
   chips <- div(class = "team-jump", lapply(D$st$Name, function(n) tags$a(href = paste0("#", slug(n)), n)))
   pages <- lapply(seq_len(nrow(D$st)), function(i) {
@@ -311,9 +311,62 @@ section_teams <- function(D) {
         div(class = paste("season", if (length(f) && f == 1 && y < SEASON) "champ"), span(y), tags$b(if (length(f)) paste0(ordinal(f), if (y == SEASON) "*" else "") else "–")) })),
       div(class = "note", sprintf("%d season%s · %d title%s · %d runner-up%s · %d career weekly win%s. *%d is current standing.",
                                   nrow(fh), if (nrow(fh) == 1) "" else "s", sum(done$fin == 1), if (sum(done$fin == 1) == 1) "" else "s",
-                                  sum(done$fin == 2), if (sum(done$fin == 2) == 1) "" else "s", nw, if (nw == 1) "" else "s", SEASON)))
+                                  sum(done$fin == 2), if (sum(done$fin == 2) == 1) "" else "s", nw, if (nw == 1) "" else "s", SEASON)),
+      roster_block(rs %>% filter(franchise_id == s$franchise_id)))
   })
   tagList(chips, pages)
+}
+
+# Weeks each current player has been on his current team, IR and bye weeks included. MFL's weekly rows
+# leave out IR players, so the weeks come from add/drop/trade history: a move counts from the first week
+# whose Sunday 1pm ET slate starts after it (Wednesday waivers land the next week). Weekly rows are unioned in.
+roster_weeks <- function(D) {
+  W <- D$WEEK
+  sun <- as.numeric(as.POSIXct(paste(SEASON_WEEK1_THU, "20:00"), tz = "America/New_York")) + (seq_len(W) - 1) * 7 * 86400 + 65 * 3600
+  ev <- D$tx %>% filter(type_desc %in% c("added", "traded_for", "dropped", "traded_away")) %>%
+    transmute(player_id, franchise_id, when = as.numeric(timestamp), join = type_desc %in% c("added", "traded_for"))
+  cur <- D$ros %>% filter(pos %in% SKILL) %>% distinct(player_id, franchise_id)
+  wk <- cur %>% left_join(ev, by = c("player_id", "franchise_id"), relationship = "many-to-many") %>%
+    group_by(player_id, franchise_id) %>% arrange(when, .by_group = TRUE) %>%
+    reframe(week = seq_len(W), on = {
+      start <- if (all(is.na(when))) TRUE else !join[1]   # no moves, or first move a drop/trade away: on the team from week 1
+      vapply(sun, function(t) { k <- which(when < t); if (length(k)) join[max(k)] else start }, logical(1))
+    })
+  played <- D$lu %>% distinct(player_id, franchise_id, week) %>% mutate(lu = TRUE)
+  wk %>% left_join(played, by = c("player_id", "franchise_id", "week")) %>%
+    filter(on | coalesce(lu, FALSE)) %>% count(player_id, franchise_id, name = "Weeks")
+}
+
+roster_stats <- function(D) {
+  st <- D$lu %>% group_by(player_id, franchise_id) %>%
+    summarise(Starts = sum(used), Lineup = sum(score[used]), Total = sum(score), G = sum(score != 0), nfl_lu = last(nfl), .groups = "drop")
+  D$ros %>% filter(pos %in% SKILL) %>%
+    left_join(roster_weeks(D), by = c("player_id", "franchise_id")) %>%
+    left_join(st, by = c("player_id", "franchise_id")) %>%
+    mutate(across(c(Weeks, Starts, G), ~ coalesce(as.integer(.x), 0L)), across(c(Lineup, Total), ~ coalesce(.x, 0)),
+           nfl = coalesce(nfl_lu, norm_team(team)),
+           Contract = case_when(is.na(contract_years) ~ "Pickup", contract_years == 0 ~ "Expiring", TRUE ~ paste("thru", SEASON + contract_years)))
+}
+
+# One table per team: QB / RB / WR / TE groups, each sorted by lineup points. TOTAL drops first on phones.
+roster_block <- function(r) {
+  r <- r %>% mutate(pos = factor(pos, SKILL)) %>% arrange(pos, desc(Lineup), desc(Total))
+  td <- function(x, cls = "r") tags$td(class = cls, HTML(x))
+  hd <- c(Player = "", "2026 $" = "r", Contract = "r", Starts = "r", "Lineup pts" = "r", "Total pts" = "r tot", PPG = "r")
+  wd <- c(NA, "2rem", "3.7rem", "2.3rem", "2.7rem", "2.5rem", "2.1rem")   # on the header cells, so hiding TOTAL frees its width
+  body <- lapply(SKILL, function(p) {
+    g <- r %>% filter(pos == p); if (!nrow(g)) return(NULL)
+    tagList(tags$tr(class = "rg", tags$td(colspan = length(hd) - 1, p), tags$td(class = "tot")),
+      lapply(seq_len(nrow(g)), function(i) { x <- g[i, ]
+        tags$tr(td(team_cell(short_name(x$player_name), x$nfl), ""), td(if (is.na(x$salary)) nil else paste0("$", x$salary)), td(x$Contract, "r nw"),
+                td(sprintf("%d/%d", x$Starts, x$Weeks)), td(paste0('<span class="lp">', fmt1(x$Lineup), '</span>')),
+                td(fmt1(x$Total), "r tot"), td(if (x$G) fmt1(x$Total / x$G) else nil)) }))
+  })
+  tagList(h3(class = "rs-sub", "Roster"),
+    tags$table(class = "mt ros", `data-quarto-disable-processing` = "true",
+      tags$thead(tags$tr(lapply(seq_along(hd), function(j) tags$th(class = hd[[j]], style = if (!is.na(wd[j])) paste0("width:", wd[j]), names(hd)[j])))),
+      tags$tbody(body)),
+    div(class = "note", "Starts and lineup points count weeks in the best-ball lineup (QB1 RB2 WR3 TE1 FLEX2)."))
 }
 
 # ---- 7. All-Time -------------------------------------------------------------------------------

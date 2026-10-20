@@ -9,7 +9,7 @@ setwd(dirname(normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(), 
 WEEK <- if (length(args)) as.integer(args[1]) else stop("Pass the week number, e.g. Rscript make_report.R 4")
 
 QUARTO <- "C:/Program Files/RStudio/resources/app/bin/quarto/bin/quarto.exe"
-Sys.setenv(QUARTO_R = "C:/Program Files/R/R-4.4.2/bin")
+Sys.setenv(QUARTO_R = R.home("bin"))   # the R running this script
 for (f in c("data", "ui", "sim", "brand", "report", "card", "standings_section", "sim_section", "money_section", "build_data")) source(file.path("R", paste0(f, ".R")))
 
 # 1. data (--render-only reuses the data already built for this week)
