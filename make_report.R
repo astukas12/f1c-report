@@ -41,6 +41,12 @@ for (f in pages) {
   if (st != 0) stop("Site render failed: ", f)
 }
 
+# Quarto names the theme stylesheet by a hash of its contents, so every styles.scss change leaves the old one behind
+used <- unique(unlist(lapply(list.files("docs", "\\.html$", recursive = TRUE, full.names = TRUE),
+                             function(f) regmatches(x <- readLines(f, warn = FALSE), gregexpr("bootstrap-[0-9a-f]+\\.min\\.css", x)))))
+old <- setdiff(list.files("docs/site_libs/bootstrap", "^bootstrap-[0-9a-f]+\\.min\\.css$"), used)
+if (length(used) && length(old)) { file.remove(file.path("docs/site_libs/bootstrap", old)); message("Removed unused stylesheets: ", paste(old, collapse = ", ")) }
+
 # 3. share copy: every section on one page, outside the website project (no navbar)
 tmp <- file.path(tempdir(), "f1c-share"); unlink(tmp, recursive = TRUE); dir.create(tmp)
 file.copy("styles.scss", tmp)

@@ -78,6 +78,7 @@ load_scores <- function(lg, through_week) {
   # Earlier weeks come from the cache once final; the week being reported is always refetched
   pl <- map_dfr(seq_len(through_week), ~ get_week_cached(lg$conn, SEASON, .x, force = .x == through_week)) %>%
     left_join(lg$players, by = "player_id")
+  check_scores(pl, through_week)
 
   results <- pl %>%
     group_by(week, franchise_id) %>%
@@ -92,6 +93,20 @@ load_scores <- function(lg, through_week) {
     left_join(lg$teams, by = "franchise_id")
 
   list(players = pl, results = results)
+}
+
+# MFL posts team totals before per-player scores: after MNF the players in that game sit at 0 for hours while
+# the team totals are already final. Any team whose starters don't add up to its total has players still at 0.
+# A final week stops the build (no cards, no report); a week still in progress only warns.
+check_scores <- function(pl, wk) {
+  bad <- pl %>% filter(week == wk) %>% group_by(franchise_id) %>%
+    summarise(total = first(team_score), starters = sum(score[starter]), pending = first(yet_to_play), .groups = "drop") %>%
+    filter(abs(total - starters) > 0.15)   # MFL rounds team totals to 0.1
+  if (!nrow(bad)) return(invisible(TRUE))
+  final <- all(pl$yet_to_play[pl$week == wk] == 0)
+  msg <- sprintf("Week %d: starters' scores don't add up to the team total for %d team(s) (%s). MFL's per-player scores lag behind team totals after MNF; wait and rerun.",
+                 wk, nrow(bad), paste(sprintf("%s %.1f vs %.1f", bad$franchise_id, bad$starters, bad$total), collapse = ", "))
+  if (final) stop(msg, call. = FALSE) else warning(msg, call. = FALSE)
 }
 
 standings_through <- function(results, wk) {

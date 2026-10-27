@@ -39,6 +39,10 @@ section_standings <- function(D) {
         div(class = "note", "Ranked by F1 points, then average weekly finish, then points scored. Wk = this week's finish. W = wins, Pod = podiums (top 3), Pts = points finishes (top 6). +F1 = F1 points this week. $ = prize money won this season.")),
     sec("race", "The Race", p(class = "dek", "F1 points by week."), race_chart(D$res, D$st, D$hp, W)),
     sec("weekly", "Week by Week", p(class = "dek", "Each team's finish every week, in standings order."), finish_grid_chart(D$res, D$st, W)),
+    sec("pairwise", "Pairwise Rank", p(class = "dek", "Each team's record against every other score, every week, and where that ranks."), pairwise_chart(D),
+        div(class = "note", "Pairwise: each weekly score compared with the other 11 teams' scores that week.")),
+    sec("h2h", "Head to Head", p(class = "dek", "Row team's record against each column team, every week this season. Sorted by pairwise win %."), h2h_chart(D),
+        div(class = "note", "Weeks the row team outscored the column team, all season. Ties count as half a win.")),
     sec("context", "Historical Context", context_rows(D$st, D$res, D$hp, W),
         div(class = "note", sprintf("Compared with %s. 2024 is left out: it was a 10-team league.", and_list(HIST_YEARS)))),
     sec("final", "Standings vs. Final Finish",
@@ -178,13 +182,19 @@ section_sims <- function(D) {
 # ---- 4. Money & Cap ---------------------------------------------------------------------------
 section_money <- function(D) {
   cc <- D$cc
-  d <- cc %>% mutate(team = pmap_chr(list(Name, Signed), function(n, s) team_cell(n, paste(s, "signed"))),
+  # 2028: salary already under contract for 2028 (contract_years >= 2), plus 2028 traded cap
+  c28 <- D$ros %>% group_by(franchise_id) %>% summarise(Sal28 = sum(salary[coalesce(contract_years, 0) >= 2], na.rm = TRUE),
+                                                        Signed28 = sum(coalesce(contract_years, 0) >= 2), .groups = "drop")
+  t28 <- if ("2028" %in% names(D$trd$net)) D$trd$net %>% transmute(Name, Trd28 = .data[["2028"]]) else tibble(Name = cc$Name, Trd28 = 0)
+  cc <- cc %>% left_join(c28, by = "franchise_id") %>% left_join(t28, by = "Name") %>% mutate(across(c(Sal28, Signed28, Trd28), ~ coalesce(.x, 0)))
+  d <- cc %>% mutate(team = pmap_chr(list(Name, Signed, Signed28), function(n, s, s8) team_cell(n, sprintf("%d signed '27 · %d '28", s, s8))),
+                     s28 = paste0("$", Sal28, ifelse(Trd28 != 0, paste0('<span class="ts">', ifelse(Trd28 > 0, "+", "−"), abs(Trd28), " trd</span>"), "")),
                      wf = num1(F1Pts), sf = num1(Seasonal), so = num1(Socialism), tr = num1(Traded),
                      tc = sub("\\.0$", "", fmt1(TotalCap)), sa = paste0("$", Salary), dh = num1(CapHit),
                      sp = paste0('<span class="big', ifelse(CapSpace < 0, " neg", ""), '">', money_s(CapSpace), '</span>'))
-  cap <- mtable(d, list(Team = "team", "Wk F1" = "wf", "Ssn F1" = "sf", "Soc" = "so", "Trd" = "tr", "Total" = "tc", "Sal" = "sa", "Dead" = "dh", "Space" = "sp"),
-                left = 1, cls = "cap", widths = c(NA, "2.3rem", "2.4rem", "1.9rem", "2rem", "2.3rem", "2.5rem", "2.1rem", "3.1rem"),
-                groups = list(c(" ", 1), c("2027 Cap", 5), c("Costs", 2), c(" ", 1)))
+  cap <- mtable(d, list(Team = "team", "Wk F1" = "wf", "Ssn F1" = "sf", "Soc" = "so", "Trd" = "tr", "Total" = "tc", "Sal" = "sa", "Dead" = "dh", "Space" = "sp", "2028 $" = "s28"),
+                left = 1, cls = "cap c28", widths = c(NA, "2.3rem", "2.4rem", "1.9rem", "2rem", "2.3rem", "2.5rem", "2.1rem", "3.1rem", "2.7rem"),
+                groups = list(c(" ", 1), c("2027 Cap", 5), c("Costs", 2), c(" ", 1), c("2028", 1)))
   soc_note <- if (all(cc$TotalF1 <= 100)) " No team is over 100 yet." else ""
   tg <- D$tags
   tiles <- div(class = "tiles four tag-tiles", lapply(c("QB", "RB", "WR", "TE"), function(p) tile(paste(p, "tag"), paste0("$", tg$tag[tg$pos == p]))))
@@ -205,8 +215,10 @@ section_money <- function(D) {
   fat <- mtable(fa, list("#" = "n", Pos = "posc", Player = "pl", Status = "stc", "2026 $" = "sal", "Tag $" = "tagc", PPG = "ppgc", Rank = "rk"), left = 3,
                 cls = "fa", widths = c("1.3rem", "2rem", NA, "3.6rem", "2.6rem", "2.4rem", "2.4rem", "2.4rem"))
   tagList(
-    sec("cap", "2027 Cap Check", cap,
-        div(class = "note", paste0("As if the season ended today. Total cap = $230 + weekly F1 + seasonal F1 (by current standing) + socialism + traded. Socialism: total F1 over 100 is shared with teams under 100.", soc_note))),
+    sec("cap", "2027 Cap Check", div(class = "scroll-x", cap),
+        div(class = "note", paste0("As if the season ended today. Total cap = $230 + weekly F1 + seasonal F1 (by current standing) + socialism + traded. Socialism: total F1 over 100 is shared with teams under 100.", soc_note,
+                                   " 2028 $: salary already under contract for 2028 (at 2026 salary), with 2028 traded cap below it."))),
+    contract_value(D),
     sec("fa", "2027 Free Agents", tiles, fat,
         div(class = "note", "Ranked by 2026 points. Pickup: added this season, no contract. Tag: avg of top 3 QB/TE or top 5 RB/WR salaries.")))
 }
@@ -312,9 +324,10 @@ section_teams <- function(D) {
       div(class = "note", sprintf("%d season%s · %d title%s · %d runner-up%s · %d career weekly win%s. *%d is current standing.",
                                   nrow(fh), if (nrow(fh) == 1) "" else "s", sum(done$fin == 1), if (sum(done$fin == 1) == 1) "" else "s",
                                   sum(done$fin == 2), if (sum(done$fin == 2) == 1) "" else "s", nw, if (nw == 1) "" else "s", SEASON)),
+      outlook_block(D, s$franchise_id),
       roster_block(rs %>% filter(franchise_id == s$franchise_id)))
   })
-  tagList(chips, pages)
+  tagList(position_strength(D), chips, pages)
 }
 
 # Weeks each current player has been on his current team, IR and bye weeks included. MFL's weekly rows
@@ -398,3 +411,147 @@ section_alltime <- function(D) {
 
 section_body <- function(page, D) switch(page, index = section_standings(D), review = section_review(D), sims = section_sims(D),
                                          money = section_money(D), office = section_office(D), teams = section_teams(D), alltime = section_alltime(D))
+
+# ---- Standings: Pairwise Rank and Head to Head -------------------------------------------------
+# Every weekly score set against the other 11 that week. Ties count half.
+pairwise <- function(res, W) {
+  d <- res %>% filter(week <= W) %>% select(week, Name, points)
+  h2h <- d %>% inner_join(d, by = "week", suffix = c("", "_o"), relationship = "many-to-many") %>% filter(Name != Name_o) %>%
+    group_by(Name, Name_o) %>% summarise(w = sum(points > points_o) + .5 * sum(points == points_o), n = n(), .groups = "drop")
+  rec <- h2h %>% group_by(Name) %>% summarise(W = sum(w), L = sum(n) - sum(w), .groups = "drop") %>%
+    mutate(pct = W / (W + L), prank = rank(-pct, ties.method = "min"))
+  list(h2h = h2h, rec = rec)
+}
+half <- function(x) ifelse(x == floor(x), format(floor(x), trim = TRUE), paste0(ifelse(floor(x) > 0, floor(x), ""), "½"))
+wl <- function(w, l) paste0(half(w), "-", half(l))
+
+pairwise_chart <- function(D) {
+  pw <- pairwise(D$res, D$WEEK)$rec %>% left_join(D$st %>% select(Name, Pos), by = "Name") %>%
+    mutate(Name = factor(Name, levels = rev(D$st$Name)))
+  p <- ggplot(pw, aes(y = Name)) +
+    geom_segment(aes(x = Pos, xend = prank, yend = Name), colour = "#4a4a4a", linewidth = 1.1) +
+    geom_point(aes(x = prank), colour = "#F2F2F2", size = 3) +
+    geom_point(aes(x = Pos), colour = GOLD, size = 3.4) +
+    geom_text(aes(x = 14.6, label = wl(W, L)), colour = "#d6d6d6", size = 3.1, family = "Inter", hjust = 1) +
+    scale_x_continuous(breaks = c(1, 3, 6, 9, 12), labels = c("1st", "3rd", "6th", "9th", "12th"), limits = c(.6, 14.7), expand = c(0, 0), position = "top") +
+    labs(x = NULL, y = NULL) + theme_gts() +
+    theme(panel.grid.major.y = element_blank(), axis.text.y = element_text(colour = "#e8e8e8", size = 10, face = "bold"),
+          axis.text.x = element_text(size = 8.5))
+  tagList(div(class = "key", HTML(sprintf('<span><i class="sw" style="background:%s;border-radius:50%%"></i>F1 rank</span><span><i class="sw" style="background:#F2F2F2;border-radius:50%%"></i>Pairwise rank</span><span>Right: Pairwise W-L</span>', GOLD))),
+          svg_chart(p, w = 4.4, h = .8 + .27 * nrow(pw)))
+}
+
+h2h_chart <- function(D) {
+  pw <- pairwise(D$res, D$WEEK); ord <- pw$rec %>% arrange(desc(pct), Name) %>% pull(Name)
+  m <- pw$h2h %>% mutate(share = w / n, lbl = wl(w, n - w), Name = factor(Name, levels = rev(ord)), Name_o = factor(Name_o, levels = c(ord, "Pairwise")))
+  tot <- pw$rec %>% transmute(Name = factor(Name, levels = rev(ord)), lbl = sprintf("%s
+%d%%", wl(W, L), round(100 * pct)))
+  p <- ggplot(m, aes(Name_o, Name)) +
+    geom_tile(aes(fill = share), colour = "#0a0a0a", linewidth = .8) +
+    geom_text(aes(label = lbl), colour = "#f2f2f2", size = 2.45, family = "Inter", fontface = "bold") +
+    geom_text(data = tot, aes(x = 13.3, y = Name, label = lbl), colour = "#ffffff", size = 2.3, lineheight = .85, family = "Inter", fontface = "bold", inherit.aes = FALSE) +
+    scale_fill_gradient2(low = "#8E3B36", mid = "#262626", high = "#2F7A4D", midpoint = .5, limits = c(0, 1)) +
+    scale_x_discrete(drop = FALSE, labels = c(ord, "Pairwise W-L / %"), position = "top", expand = expansion(add = c(.5, 1))) +
+    labs(x = NULL, y = NULL) + theme_gts() +
+    theme(panel.grid = element_blank(), axis.text.x.top = element_text(angle = 55, hjust = 0, vjust = 0, size = 7.5, colour = "#bdbdbd"),
+          axis.text.y = element_text(colour = "#e8e8e8", size = 7.5, face = "bold"), plot.margin = margin(4, 26, 2, 0))
+  svg_chart(p, w = 4.1, h = 4.6)
+}
+
+# ---- Team Pages: Position Strength (league grid) ------------------------------------------------
+# "Deep": healthy rostered players among the league's top 12 QB / 24 RB / 36 WR / 12 TE by points per game (2+ games)
+STARTABLE_N <- c(QB = 12, RB = 24, WR = 36, TE = 12)
+out_ids <- function(D) {
+  o <- D$ros$player_id[D$ros$roster_status == "INJURED_RESERVE"]
+  if (!is.null(D$inj)) o <- c(o, D$inj$player_id[D$inj$out])
+  unique(o)
+}
+startable <- function(D) {
+  ppg <- D$lu %>% distinct(week, player_id, .keep_all = TRUE) %>% group_by(player_id) %>%
+    summarise(g = sum(score != 0), ppg = ifelse(g > 0, sum(score) / g, 0), .groups = "drop")
+  D$ros %>% filter(pos %in% SKILL, !player_id %in% out_ids(D)) %>% left_join(ppg, by = "player_id") %>%
+    filter(coalesce(g, 0L) >= 2) %>% group_by(pos) %>% arrange(desc(ppg), .by_group = TRUE) %>%
+    filter(row_number() <= STARTABLE_N[first(pos)]) %>% ungroup() %>% count(franchise_id, pos, name = "deep")
+}
+
+position_strength <- function(D) {
+  slots <- c(SKILL, "FLEX")
+  base <- D$lu %>% filter(used, !is.na(slot)) %>% group_by(franchise_id, slot) %>% summarise(p = sum(score), .groups = "drop")
+  g <- D$teams %>% select(franchise_id, Name) %>% tidyr::crossing(slot = slots) %>%
+    left_join(base, by = c("franchise_id", "slot")) %>% mutate(p = coalesce(p, 0))
+  g <- bind_rows(g, g %>% group_by(franchise_id, Name) %>% summarise(p = sum(p), .groups = "drop") %>% mutate(slot = "Total")) %>%
+    group_by(slot) %>% mutate(rk = rank(-p, ties.method = "min")) %>% ungroup() %>%
+    left_join(startable(D), by = c("franchise_id", slot = "pos")) %>%
+    mutate(cell = sprintf('<span class="pv">%s</span><span class="pr">%s%s</span>', round(p), vapply(rk, ordinal, ""),
+                          ifelse(slot %in% SKILL, paste0(" · ", coalesce(deep, 0L)), "")),
+           cls = case_when(rk <= 3 ~ "r ps top", rk >= 10 ~ "r ps low", TRUE ~ "r ps"))
+  ord <- g %>% filter(slot == "Total") %>% arrange(rk) %>% pull(Name)
+  rows <- lapply(ord, function(n) { x <- g %>% filter(Name == n)
+    tags$tr(tags$td(span(class = "tn", n)), lapply(c(slots, "Total"), function(s) tags$td(class = x$cls[x$slot == s], HTML(x$cell[x$slot == s])))) })
+  sec("strength", "Position Strength",
+      tags$table(class = "mt pstr", `data-quarto-disable-processing` = "true",
+                 tags$thead(tags$tr(tags$th("Team"), lapply(c(slots, "Total"), function(s) tags$th(class = "r", s)))), tags$tbody(rows)),
+      div(class = "note", "Season lineup points by best-ball slot. Rank among 12 teams. Second number under QB/RB/WR/TE: healthy rostered players among the league's top 12 QB, 24 RB, 36 WR and 12 TE by points per game (2+ games)."))
+}
+
+# ---- Team Pages: Bye and Injury Outlook ------------------------------------------------------
+outlook_block <- function(D, fid, n_weeks = 4) {
+  W <- D$WEEK; out <- out_ids(D)
+  r <- D$ros %>% filter(franchise_id == fid, pos %in% SKILL) %>% mutate(team = norm_team(team))
+  r <- if (!is.null(D$byes)) r %>% left_join(D$byes, by = "team") else r %>% mutate(bye = NA_integer_)
+  hl <- r %>% filter(!player_id %in% out)
+  wks <- seq(W + 1, min(W + n_weeks, 17))
+  need <- c(QB = 1, RB = 2, WR = 3, TE = 1)
+  bye_rows <- lapply(wks, function(w) {
+    b <- hl %>% filter(bye %in% w); a <- hl %>% filter(!bye %in% w)
+    k <- table(factor(a$pos, SKILL))
+    short <- names(need)[k[names(need)] < need]
+    if (!length(short) && sum(pmax(k[c("RB", "WR", "TE")] - need[c("RB", "WR", "TE")], 0)) < 2) short <- "FLEX"
+    div(class = "tp-row", span(tags$b(paste0("Wk ", w)), tags$small(if (nrow(b)) paste(sprintf("%s %s", short_name(b$player_name), b$pos), collapse = ", ") else "no byes")),
+        if (length(short)) span(class = "gold", paste("Can't fill", paste(short, collapse = ", "))) else HTML(nil))
+  })
+  inj <- if (!is.null(D$inj)) r %>% inner_join(D$inj %>% filter(out), by = "player_id") else r[0, ]
+  ir_only <- r %>% filter(roster_status == "INJURED_RESERVE", !player_id %in% inj$player_id) %>%
+    mutate(status = "IR", details = NA_character_, exp_return = NA_character_)
+  inj <- bind_rows(inj, ir_only) %>% arrange(match(pos, SKILL))
+  inj_rows <- if (nrow(inj)) lapply(seq_len(nrow(inj)), function(i) { x <- inj[i, ]
+    ret <- if (!is.na(x$exp_return) && nzchar(x$exp_return)) paste("back", sub(", 20\\d\\d$", "", x$exp_return))
+    div(class = "tp-row", span(short_name(x$player_name), tags$small(paste(c(x$pos, if (!is.na(x$details)) x$details), collapse = " · "))),
+        tags$b(paste(c(x$status, ret), collapse = " · "))) })
+    else list(div(class = "tp-row", span("None"), HTML(nil)))
+  tagList(h3(class = "rs-sub", "Bye and Injury Outlook"),
+    div(class = "tp-cols",
+        div(div(class = "ol-k", sprintf("Byes, weeks %d–%d", min(wks), max(wks))), div(class = "tp-list", bye_rows)),
+        div(div(class = "ol-k", "IR, Out, Doubtful"), div(class = "tp-list", inj_rows))),
+    div(class = "note", "Can't fill: not enough healthy players off bye for QB1 RB2 WR3 TE1 FLEX2. Injury status as of this build, held constant."))
+}
+
+# ---- Money & Cap: Contract Value ------------------------------------------------------------------
+POS_COLS <- c(QB = GOLD, RB = "#82E0AA", WR = "#85C1E9", TE = "#E59866")
+contract_value <- function(D) {
+  v <- roster_stats(D) %>% filter(!is.na(contract_years), salary > 0) %>%
+    left_join(D$teams %>% select(franchise_id, Name), by = "franchise_id") %>% mutate(ppd = Lineup / salary)
+  v$res <- resid(lm(Lineup ~ salary, data = v))
+  lab <- bind_rows(v %>% slice_max(res, n = 5, with_ties = FALSE) %>% mutate(up = TRUE),
+                   v %>% slice_min(res, n = 5, with_ties = FALSE) %>% mutate(up = FALSE)) %>%
+    mutate(txt = sprintf("%s (%s)", sub(",.*$", "", player_name), Name))
+  p <- ggplot(v, aes(salary, Lineup)) +
+    geom_smooth(method = "lm", formula = y ~ x, se = FALSE, colour = "#555555", linewidth = .6, linetype = "22") +
+    geom_point(aes(colour = pos), size = 1.9, alpha = .85) +
+    ggrepel::geom_text_repel(data = lab %>% filter(up), aes(label = txt), colour = "#e8e8e8", size = 2.7, family = "Inter",
+                             nudge_y = 25, segment.colour = "#444", min.segment.length = 0, seed = 1, max.overlaps = Inf) +
+    ggrepel::geom_text_repel(data = lab %>% filter(!up), aes(label = txt), colour = "#9a9a9a", size = 2.7, family = "Inter",
+                             nudge_y = -25, segment.colour = "#444", min.segment.length = 0, seed = 1, max.overlaps = Inf) +
+    scale_colour_manual(values = POS_COLS) + scale_x_continuous(labels = function(x) paste0("$", x)) +
+    labs(x = "2026 salary", y = "Lineup points") + theme_gts()
+  lst <- function(d) mtable(d %>% mutate(pl = pmap_chr(list(player_name, Name), function(n, o) team_cell(short_name(n), o)),
+                                         sal = paste0("$", salary), lp = paste0('<span class="big">', fmt1(Lineup), '</span>')),
+                            list(Player = "pl", "$" = "sal", "Lineup pts" = "lp"), left = 1, cls = "cap", widths = c(NA, "2.4rem", "4.2rem"))
+  sec("value", "Contract Value",
+      div(class = "key", HTML(paste(sprintf('<span><i class="sw" style="background:%s;border-radius:50%%"></i>%s</span>', POS_COLS, names(POS_COLS)), collapse = ""))),
+      svg_chart(p, w = 4.1, h = 3.6),
+      div(class = "tp-cols",
+          div(h3(class = "rs-sub", "Best value"), lst(v %>% arrange(desc(ppd)) %>% head(5))),
+          div(h3(class = "rs-sub", "Least value ($10+)"), lst(v %>% filter(salary >= 10) %>% arrange(ppd, desc(salary)) %>% head(5)))),
+      div(class = "note", "Lineup points per dollar of 2026 salary. Pickups excluded. Lineup points are with the current team. Labels: the five furthest above and below the trend line."))
+}

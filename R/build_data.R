@@ -40,11 +40,18 @@ build_report_data <- function(WEEK) {
     tibble(franchise_id = map_chr(fr, "id"), faab = as.numeric(map_chr(fr, ~ .x$bbidAvailableBalance %||% NA_character_)))
   }, error = function(e) NULL)
   moves <- roster_moves(lu, lg)
+  # NFL byes and injuries (league-independent MFL exports; they only answer on api.myfantasyleague.com)
+  mfl_api <- function(type) jsonlite::fromJSON(sprintf("https://api.myfantasyleague.com/%d/export?TYPE=%s&JSON=1", SEASON, type))
+  byes <- tryCatch(mfl_api("nflByeWeeks")$nflByeWeeks$team %>% transmute(team = norm_team(id), bye = as.integer(bye_week)),
+                   error = function(e) { warning("No bye weeks: ", conditionMessage(e)); NULL })
+  inj  <- tryCatch(mfl_api("injuries")$injuries$injury %>% transmute(player_id = id, status, details, exp_return,
+                     out = grepl("^IR|^Out$|^Doubtful$|^Suspended$|PUP", status)),
+                   error = function(e) { warning("No injuries: ", conditionMessage(e)); NULL })
 
   list(WEEK = WEEK, built = Sys.time(), teams = lg$teams, weekly_lookup = lg$weekly, seasonal_lookup = lg$seasonal,
        res = res, lu = lu, st = st, prev_st = prev_st, ros = ros,
        hp = hp, hall = hall, hplay = hplay, ohist = ohist, wsim = wsim, wnext = wnext,
-       cc = cc, tags = tags, fas = fas, ytd = ytd, trd = trd, tx = tx, faab = faab, moves = moves)
+       cc = cc, tags = tags, fas = fas, ytd = ytd, trd = trd, tx = tx, faab = faab, moves = moves, byes = byes, inj = inj)
 }
 
 # Next week's ETR sim (cards/week-NN-sim.csv from make_preview.R), stamped with when it was run.

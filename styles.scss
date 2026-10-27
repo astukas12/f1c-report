@@ -304,6 +304,19 @@ table.mt.ros tr.rg td { color: var(--gold); font-variant: small-caps; text-trans
   padding-top: .9rem; padding-bottom: .2rem; border-bottom: 1px solid #3a3210; }
 table.mt.ros tbody tr.rg:first-child td { padding-top: .3rem; }
 @media (max-width: 480px) { table.mt.ros .tot { display: none; } }
+table.mt.pstr { font-size: .74rem; }
+table.mt.pstr th, table.mt.pstr td { padding: .4rem .12rem; }
+table.mt.pstr td.ps { line-height: 1.1; }
+table.mt.pstr .pv { display: block; color: #e8e8e8; font-weight: 700; font-size: .84rem; }
+table.mt.pstr .pr { display: block; color: var(--faint); font-size: .6rem; white-space: nowrap; }
+table.mt.pstr td.ps.top { background: rgba(232, 197, 71, .13); }
+table.mt.pstr td.ps.top .pv { color: var(--gold); }
+table.mt.pstr td.ps.low .pv, table.mt.pstr td.ps.low .pr { color: #555; }
+table.mt.pstr td:last-child .pv { font-size: .92rem; }
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.mt.c28 { min-width: 31rem; }
+.ol-k { font-size: .6rem; color: var(--gold); letter-spacing: .1em; text-transform: uppercase; font-weight: 600; margin: .2rem 0 .1rem; }
+.tp-row small.wrap, .tp-row > span > small { white-space: normal; }
 .seasons { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; }
 .season { background: #141414; border: 1px solid #242424; border-radius: 10px; text-align: center; padding: .4rem 0; font-size: .66rem; color: var(--faint); display: flex; flex-direction: column; }
 .season b { color: #fff; font-size: .9rem; } .season.champ { border-color: var(--gold); } .season.champ b { color: var(--gold); }
