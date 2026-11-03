@@ -48,8 +48,9 @@ if (missing > 0) message(missing, " rostered players have no ETR projection (out
 etr_left <- board %>% filter(src == "etr", med > 0) %>% distinct(nfl, slate)
 slot <- c(Thursday = "TNF", Sunday = "SNF", Monday = "MNF", Other = "London", Main = "Sunday")
 etr_lbl <- unique(unname(slot[etr_left$slate]))
-sim$sources <- if (is.null(GTS) || !any(board$src == "gts")) "ETR projections" else
-  paste0("GTS sims", if (length(etr_lbl)) paste0(" · ETR for ", paste(etr_lbl[order(match(etr_lbl, slot))], collapse = ", ")) else "")
+PSRC <- Sys.getenv("F1C_PROJ_SRC", "ETR")   # auto_sims.R --fallback sets "Rotowire" when ETR isn't out yet
+sim$sources <- if (is.null(GTS) || !any(board$src == "gts")) paste(PSRC, "projections") else
+  paste0("GTS sims", if (length(etr_lbl)) paste0(" · ", PSRC, " for ", paste(etr_lbl[order(match(etr_lbl, slot))], collapse = ", ")) else "")
 if (!is.null(GTS)) {
   um <- board %>% filter(src == "gts", is.na(gkey)) %>% arrange(desc(med))
   message("GTS: ", sum(board$src == "gts" & !is.na(board$gkey)), " rostered players matched; ", nrow(um), " rostered in GTS games but not in GTS",
