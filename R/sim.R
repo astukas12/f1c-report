@@ -25,6 +25,12 @@ sim_key <- function(x) {
   trimws(tolower(gsub("[^A-Za-z ]", "", x)))
 }
 
+# The last-name fallback must not match teammates: Brian Robinson got Bijan's projection, Raheim Sanders got Shedeur's sims.
+same_first <- function(a, b) {
+  nick <- function(x) sub("^hollywood ", "marquise ", x)
+  substr(nick(a), 1, 3) == substr(nick(b), 1, 3)   # Kenny/Kenneth, Chig/Chigoziem pass; Brian/Bijan don't
+}
+
 newest_etr <- function() {
   f <- list.files(file.path(Sys.getenv("USERPROFILE"), "Downloads"),
                   "^NFL Weekly Projections.*\\.csv$", full.names = TRUE)
@@ -93,7 +99,8 @@ sim_board <- function(lg, week, proj = NULL, gts = NULL, final = character()) {
 
   ex <- ros %>% inner_join(proj %>% select(k, pos, med, ceil, slate, Opp), by = c("k", "pos"))
   fb <- ros %>% filter(!player_id %in% ex$player_id) %>%
-    inner_join(proj %>% select(lk, pos, nfl, med, ceil, slate, Opp), by = c("lk", "pos", "nfl")) %>%
+    inner_join(proj %>% transmute(lk, pos, nfl, med, ceil, slate, Opp, pk = k), by = c("lk", "pos", "nfl")) %>%
+    filter(same_first(k, pk)) %>% select(-pk) %>%
     group_by(player_id) %>% filter(n() == 1) %>% ungroup()
   miss <- ros %>% filter(!player_id %in% c(ex$player_id, fb$player_id)) %>%
     mutate(med = 0, ceil = 0, slate = "OUT", Opp = "")
@@ -105,8 +112,9 @@ sim_board <- function(lg, week, proj = NULL, gts = NULL, final = character()) {
     gteams <- unique(gp$team)
     m1 <- b %>% select(player_id, k, nfl) %>% inner_join(gp %>% select(k, nfl = team, gkey, gmean), by = c("k", "nfl")) %>%
       group_by(player_id) %>% filter(n() == 1) %>% ungroup()
-    m2 <- b %>% filter(!player_id %in% m1$player_id) %>% select(player_id, lk, nfl) %>%
-      inner_join(gp %>% select(lk, nfl = team, gkey, gmean), by = c("lk", "nfl")) %>%
+    m2 <- b %>% filter(!player_id %in% m1$player_id) %>% select(player_id, lk, nfl, k) %>%
+      inner_join(gp %>% transmute(lk, nfl = team, gkey, gmean, pk = k), by = c("lk", "nfl")) %>%
+      filter(same_first(k, pk)) %>%
       group_by(player_id) %>% filter(n() == 1) %>% ungroup()
     m <- bind_rows(m1, m2) %>% select(player_id, gkey, gmean)
     b <- b %>% select(-gkey, -gmean) %>% left_join(m, by = "player_id") %>%
