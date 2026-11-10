@@ -315,6 +315,10 @@ table.mt.pstr td.ps.low .pv, table.mt.pstr td.ps.low .pr { color: #555; }
 table.mt.pstr td:last-child .pv { font-size: .92rem; }
 .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table.mt.c28 { min-width: 31rem; }
+table.mt.tm th { white-space: normal; line-height: 1.15; vertical-align: bottom; }
+.tp-list.tw .tp-row > span { display: flex; flex-direction: column; min-width: 0; }
+.tp-list.tw small { margin-left: 0 !important; }
+.tp-list.tw small.tw-pl { color: #9a9a9a; font-size: .7rem; line-height: 1.35; white-space: normal; }
 .ol-k { font-size: .6rem; color: var(--gold); letter-spacing: .1em; text-transform: uppercase; font-weight: 600; margin: .2rem 0 .1rem; }
 .tp-row small.wrap, .tp-row > span > small { white-space: normal; }
 .seasons { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; }

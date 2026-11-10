@@ -39,6 +39,9 @@ section_standings <- function(D) {
         div(class = "note", "Ranked by F1 points, then average weekly finish, then points scored. Wk = this week's finish. W = wins, Pod = podiums (top 3), Pts = points finishes (top 6). +F1 = F1 points this week. $ = prize money won this season.")),
     sec("race", "The Race", p(class = "dek", "F1 points by week."), race_chart(D$res, D$st, D$hp, W)),
     sec("weekly", "Week by Week", p(class = "dek", "Each team's finish every week, in standings order."), finish_grid_chart(D$res, D$st, W)),
+    season_heat(D),
+    score_range(D),
+    title_math(D),
     sec("pairwise", "Pairwise Rank", p(class = "dek", "Each team's record against every other score, every week, and where that ranks."), pairwise_chart(D),
         div(class = "note", "Pairwise: each weekly score compared with the other 11 teams' scores that week.")),
     sec("h2h", "Head to Head", p(class = "dek", "Row team's record against each column team, every week this season. Sorted by pairwise win %."), h2h_chart(D),
@@ -135,7 +138,8 @@ section_review <- function(D) {
     sec("tow", "Team of the Week", p(class = "dek", "Best possible lineup from every roster: QB, 2 RB, 3 WR, TE, 2 FLEX."),
         mtable(tw, list(Pos = "slotc", Player = "pc", Pts = "s"), left = 2, widths = c("3rem", NA, "3.4rem")),
         div(class = "tow-total", span(sprintf("Total · top team scored %s", fmt1(max(wk$points)))), tags$b(fmt1(sum(tow$score)))),
-        div(class = "fact-line", HTML(pline))))
+        div(class = "fact-line", HTML(pline))),
+    top_weekly_scores(D))
 }
 
 # ---- 3. Sim Center --------------------------------------------------------------------------
@@ -169,6 +173,7 @@ section_sims <- function(D) {
     sec("odds", sprintf("Title Odds after week %d", W), kicker = "GTS Sim Center", tag = "Sims by <b>Golden Ticket Sims</b>",
         p(class = "dek", sprintf("%s simulated finishes to the season, from this season's results only.", format(ROS_N, big.mark = ","))),
         tbl, div(class = "note", "Title = most F1 points after week 18. Wk = change in title odds since last week. Sims by Golden Ticket Sims.")),
+    if (SHOW_ODDS_MOVERS) odds_movers(D),
     sec("oddsweek", "Title Odds by Week", kicker = "GTS Sim Center", p(class = "dek", "Each week's odds, rerun with the results to that point."),
         svg_chart(p, h = 3.8), div(class = "key", HTML('<span><i class="sw" style="background:#3a3a3a"></i>Others under 1%</span>')), div(class = "note", "How it works: each team's weekly scoring level is its average so far. Every simulated week draws a score for each team, ranks the 12 and awards 15/10/7/4/2/1 F1 points. A team's level can drift week to week (injuries, trades, waivers), so nothing is locked in. Checked against 2022, 2023 and 2025.")),
     sec("nextweek", sprintf("Week %d Sims", W + 1), kicker = "GTS Sim Center",
@@ -218,6 +223,7 @@ section_money <- function(D) {
     sec("cap", "2027 Cap Check", div(class = "scroll-x", cap),
         div(class = "note", paste0("As if the season ended today. Total cap = $230 + weekly F1 + seasonal F1 (by current standing) + socialism + traded. Socialism: total F1 over 100 is shared with teams under 100.", soc_note,
                                    " 2028 $: salary already under contract for 2028 (at 2026 salary), with 2028 traded cap below it."))),
+    contract_timeline(D),
     contract_value(D),
     sec("fa", "2027 Free Agents", tiles, fat,
         div(class = "note", "Ranked by 2026 points. Pickup: added this season, no contract. Tag: avg of top 3 QB/TE or top 5 RB/WR salaries.")))
@@ -288,7 +294,7 @@ team_history <- function(D) {
 }
 
 section_teams <- function(D) {
-  W <- D$WEEK; odds <- D$ohist %>% filter(week == W); H <- team_history(D); rs <- roster_stats(D)
+  W <- D$WEEK; odds <- D$ohist %>% filter(week == W); H <- team_history(D); rs <- roster_stats(D); ps <- point_share(D)
   slug <- function(n) paste0("t-", tolower(gsub("[^A-Za-z]", "", n)))
   chips <- div(class = "team-jump", lapply(D$st$Name, function(n) tags$a(href = paste0("#", slug(n)), n)))
   pages <- lapply(seq_len(nrow(D$st)), function(i) {
@@ -318,6 +324,7 @@ section_teams <- function(D) {
                   div(class = "tp-row", span("2027 cap space"), tags$b(money_s(cap$CapSpace))),
                   div(class = "tp-row", span("FAAB left"), tags$b(if (length(fb)) paste0("$", formatC(fb, format = "f", digits = 2)) else "–")),
                   div(class = "tp-row", span("Best week"), tags$b(sprintf("%s (Wk %d)", fmt1(best$points), best$week)))))),
+      point_share_team(ps, s$franchise_id),
       h3(class = "rs-sub", "Finish by season"),
       div(class = "seasons", lapply(2022:SEASON, function(y) { f <- fh$fin[fh$year == y]
         div(class = paste("season", if (length(f) && f == 1 && y < SEASON) "champ"), span(y), tags$b(if (length(f)) paste0(ordinal(f), if (y == SEASON) "*" else "") else "–")) })),
@@ -327,7 +334,7 @@ section_teams <- function(D) {
       outlook_block(D, s$franchise_id),
       roster_block(rs %>% filter(franchise_id == s$franchise_id)))
   })
-  tagList(position_strength(D), chips, pages)
+  tagList(position_strength(D), point_share_league(D), point_share_weeks(D), league_leaders(D), chips, pages)
 }
 
 # Weeks each current player has been on his current team, IR and bye weeks included. MFL's weekly rows
@@ -500,15 +507,10 @@ outlook_block <- function(D, fid, n_weeks = 4) {
   r <- D$ros %>% filter(franchise_id == fid, pos %in% SKILL) %>% mutate(team = norm_team(team))
   r <- if (!is.null(D$byes)) r %>% left_join(D$byes, by = "team") else r %>% mutate(bye = NA_integer_)
   hl <- r %>% filter(!player_id %in% out)
-  wks <- seq(W + 1, min(W + n_weeks, 17))
-  need <- c(QB = 1, RB = 2, WR = 3, TE = 1)
+  wks <- seq(W + 1, min(W + n_weeks, LAST_WEEK))
   bye_rows <- lapply(wks, function(w) {
-    b <- hl %>% filter(bye %in% w); a <- hl %>% filter(!bye %in% w)
-    k <- table(factor(a$pos, SKILL))
-    short <- names(need)[k[names(need)] < need]
-    if (!length(short) && sum(pmax(k[c("RB", "WR", "TE")] - need[c("RB", "WR", "TE")], 0)) < 2) short <- "FLEX"
-    div(class = "tp-row", span(tags$b(paste0("Wk ", w)), tags$small(if (nrow(b)) paste(sprintf("%s %s", short_name(b$player_name), b$pos), collapse = ", ") else "no byes")),
-        if (length(short)) span(class = "gold", paste("Can't fill", paste(short, collapse = ", "))) else HTML(nil))
+    b <- hl %>% filter(bye %in% w)
+    div(class = "tp-row", span(tags$b(paste0("Wk ", w)), tags$small(if (nrow(b)) paste(sprintf("%s %s", short_name(b$player_name), b$pos), collapse = ", ") else "no byes")))
   })
   inj <- if (!is.null(D$inj)) r %>% inner_join(D$inj %>% filter(out), by = "player_id") else r[0, ]
   ir_only <- r %>% filter(roster_status == "INJURED_RESERVE", !player_id %in% inj$player_id) %>%
@@ -522,8 +524,7 @@ outlook_block <- function(D, fid, n_weeks = 4) {
   tagList(h3(class = "rs-sub", "Bye and Injury Outlook"),
     div(class = "tp-cols",
         div(div(class = "ol-k", sprintf("Byes, weeks %d–%d", min(wks), max(wks))), div(class = "tp-list", bye_rows)),
-        div(div(class = "ol-k", "IR, Out, Doubtful"), div(class = "tp-list", inj_rows))),
-    div(class = "note", "Can't fill: not enough healthy players off bye for QB1 RB2 WR3 TE1 FLEX2. Injury status as of this build, held constant."))
+        div(div(class = "ol-k", "IR, Out, Doubtful"), div(class = "tp-list", inj_rows))))
 }
 
 # ---- Money & Cap: Contract Value ------------------------------------------------------------------
@@ -554,4 +555,196 @@ contract_value <- function(D) {
           div(h3(class = "rs-sub", "Best value"), lst(v %>% arrange(desc(ppd)) %>% head(5))),
           div(h3(class = "rs-sub", "Least value ($10+)"), lst(v %>% filter(salary >= 10) %>% arrange(ppd, desc(salary)) %>% head(5)))),
       div(class = "note", "Lineup points per dollar of 2026 salary. Pickups excluded. Lineup points are with the current team. Labels: the five furthest above and below the trend line."))
+}
+
+# ---- Standings: Score Range ---------------------------------------------------------------------
+score_range <- function(D) {
+  d <- D$res %>% filter(week <= D$WEEK)
+  med <- d %>% group_by(Name) %>% summarise(m = median(points), .groups = "drop") %>% arrange(m)
+  d <- d %>% mutate(Name = factor(Name, levels = med$Name))
+  lg <- median(d$points)
+  p <- ggplot(d, aes(points, Name)) +
+    geom_vline(xintercept = lg, colour = "#555555", linetype = "22", linewidth = .5) +
+    geom_point(colour = "#bdbdbd", alpha = .7, size = 1.9) +
+    geom_point(data = med %>% mutate(Name = factor(Name, levels = med$Name)), aes(m, Name), shape = 124, size = 6, colour = GOLD) +
+    annotate("text", x = lg, y = nrow(med) + .7, label = paste("League median", fmt1(lg)), colour = "#8a8a8a", size = 2.7, family = "Inter") +
+    scale_y_discrete(expand = expansion(add = c(.6, 1.1))) +
+    labs(x = "Weekly score", y = NULL) + theme_gts() +
+    theme(panel.grid.major.y = element_blank(), axis.text.y = element_text(colour = "#e8e8e8", size = 9.5, face = "bold"))
+  sec("range", "Score Range",
+      div(class = "key", HTML(sprintf('<span><i class="sw" style="background:#bdbdbd;border-radius:50%%"></i>Weekly score</span><span><i class="sw" style="background:%s;width:3px"></i>Team median</span><span><i class="dash"></i>League median</span>', GOLD))),
+      svg_chart(p, w = 3.9, h = .9 + .28 * nrow(med)),
+      div(class = "note", "Each dot is one weekly score. Teams sorted by median."))
+}
+
+# ---- Standings: Title Math -----------------------------------------------------------------------
+title_math <- function(D) {
+  W <- D$WEEK; left <- LAST_WEEK - W; top <- 15
+  st <- D$st; L <- max(st$F1Pts)
+  d <- st %>% mutate(behind = L - F1Pts, maxgain = top * left, alive = behind <= maxgain,
+                     team = pmap_chr(list(Name, Franchise), function(n, f) team_cell(n, htmlEscape(f))),
+                     f1 = paste0('<span class="big">', vapply(F1Pts, fmtpt, ""), '</span>'),
+                     bh = ifelse(behind == 0, nil, paste0("−", vapply(behind, fmtpt, ""))),
+                     mg = ifelse(behind == 0, nil, vapply(maxgain, fmtpt, "")),
+                     stt = ifelse(alive, '<span class="pos-v">Alive</span>', '<span class="neg-v">Out</span>'))
+  sec("titlemath", "Title Math",
+      p(class = "dek", sprintf("%d weeks left, so the most F1 any team can still gain on the leader is %d (15 a week).", left, top * left)),
+      mtable(d, list(Team = "team", F1 = "f1", Behind = "bh", Status = "stt"),
+             left = 1, cls = "cap tm", widths = c(NA, "2.6rem", "3.4rem", "3.4rem")),
+      div(class = "note", sprintf("Weekly F1: 15, 10, 7, 4, 2, 1 for 1st to 6th, over an %d-week season. Alive: behind by no more than %d per week left (win every week, leader scores none).", LAST_WEEK, top)))
+}
+
+# ---- Sim Center: Title Odds Movers -------------------------------------------------------------
+odds_movers <- function(D) {
+  W <- D$WEEK
+  if (!(W - 1) %in% D$ohist$week) return(NULL)
+  d <- D$ohist %>% filter(week %in% c(W - 1, W)) %>% select(Name, week, Title, Top3) %>%
+    tidyr::pivot_wider(names_from = week, values_from = c(Title, Top3)) %>%
+    setNames(c("Name", "t0", "t1", "p0", "p1")) %>% mutate(dt = t1 - t0, dp = p1 - p0) %>% arrange(dt) %>%
+    mutate(Name = factor(Name, levels = Name), up = dt >= 0,
+           lbl = sprintf("%s  ·  Top 3 %s (%s)", pct_txt(t1), pct_txt(p1), sgn(round(dp), 0)))
+  xmax <- max(c(d$t0, d$t1))
+  p <- ggplot(d, aes(y = Name)) +
+    geom_segment(aes(x = t0, xend = t1, yend = Name, colour = up), linewidth = 1.1,
+                 arrow = arrow(length = unit(.13, "cm"), type = "closed")) +
+    geom_point(aes(x = t0), colour = "#5a5a5a", size = 1.6) +
+    geom_text(aes(x = xmax * 1.04, label = lbl), hjust = 0, colour = "#d6d6d6", size = 2.7, family = "Inter") +
+    scale_colour_manual(values = c(`TRUE` = POS_C, `FALSE` = NEG_C)) +
+    scale_x_continuous(labels = function(x) paste0(x, "%"), limits = c(0, xmax * 1.85), breaks = pretty(c(0, xmax), 4)) +
+    labs(x = "Title odds", y = NULL) + theme_gts() +
+    theme(panel.grid.major.y = element_blank(), axis.text.y = element_text(colour = "#e8e8e8", size = 9.5, face = "bold"))
+  b <- d %>% slice_max(dt, n = 1, with_ties = FALSE); w <- d %>% slice_min(dt, n = 1, with_ties = FALSE)
+  sec("movers", "Title Odds Movers", tag = "Sims by <b>Golden Ticket Sims</b>",
+      p(class = "dek", sprintf("Title odds after week %d vs. after week %d.", W, W - 1)),
+      svg_chart(p, w = 4, h = .9 + .28 * nrow(d)),
+      div(class = "fact-line", HTML(sprintf("<b>Biggest rise: %s, %s to %s. Biggest drop: %s, %s to %s.</b>",
+                                            b$Name, pct_txt(b$t0), pct_txt(b$t1), w$Name, pct_txt(w$t0), pct_txt(w$t1)))),
+      div(class = "note", "Arrow runs from last week's title odds to this week's. Right: title odds now, top 3 odds now (change in points)."))
+}
+
+# ---- Money & Cap: Contract Timeline -------------------------------------------------------------
+contract_timeline <- function(D) {
+  yrs <- (SEASON + 1):(SEASON + max(4, max(D$ros$contract_years, na.rm = TRUE)))
+  d <- D$ros %>% filter(coalesce(contract_years, 0) >= 1) %>%
+    tidyr::crossing(year = yrs) %>% filter(SEASON + contract_years >= year) %>%
+    group_by(franchise_id, year) %>% summarise(sal = sum(salary), n = n(), .groups = "drop") %>%
+    left_join(D$teams %>% select(franchise_id, Name), by = "franchise_id")
+  ord <- d %>% filter(year == SEASON + 1) %>% arrange(sal) %>% pull(Name)
+  d <- d %>% mutate(Name = factor(Name, levels = ord), year = factor(year, levels = rev(yrs))) %>%
+    arrange(Name, desc(year)) %>% group_by(Name) %>% mutate(x1 = cumsum(sal), x0 = x1 - sal) %>% ungroup()
+  cols <- setNames(c(GOLD, "#B8963A", "#7A6420", "#4a4020", "#2f2a18", "#221f14")[seq_along(yrs)], yrs)
+  p <- ggplot(d) +
+    geom_rect(aes(xmin = x0, xmax = x1, ymin = as.numeric(Name) - .38, ymax = as.numeric(Name) + .38, fill = year), colour = "#0a0a0a", linewidth = .5) +
+    geom_text(data = d %>% filter(sal >= 32), aes(x = (x0 + x1) / 2, y = as.numeric(Name) + .1, label = paste0("$", sal),
+              colour = year %in% yrs[1:2]), size = 2.45, family = "Inter", fontface = "bold") +
+    geom_text(data = d %>% filter(sal >= 32), aes(x = (x0 + x1) / 2, y = as.numeric(Name) - .2, label = n,
+              colour = year %in% yrs[1:2]), size = 2.05, family = "Inter") +
+    scale_fill_manual(values = cols) + scale_colour_manual(values = c(`TRUE` = "#0a0a0a", `FALSE` = "#e8e8e8")) +
+    scale_y_continuous(breaks = seq_along(ord), labels = ord, expand = c(0, .3)) +
+    scale_x_continuous(labels = function(x) paste0("$", x), expand = expansion(mult = c(0, .02))) +
+    labs(x = "Salary committed", y = NULL) + theme_gts() +
+    theme(panel.grid.major.y = element_blank(), axis.text.y = element_text(colour = "#e8e8e8", size = 9.5, face = "bold"))
+  sec("timeline", "Contract Timeline",
+      div(class = "key", HTML(paste(sprintf('<span><i class="sw" style="background:%s"></i>%s</span>', cols[as.character(yrs)], yrs), collapse = ""))),
+      svg_chart(p, w = 4, h = .9 + .34 * length(ord)),
+      div(class = "note", "Salary under contract by season. Excludes traded cap and dead money. In each block: $ committed, and players signed beneath it (shown where the block is wide enough). Sorted by 2027 committed."))
+}
+
+# ---- F1 Points by Player (last year's Point Share, F1C_violin.Rmd) -----------------------------
+# Each week a team's F1 points are split across its lineup by each starter's share of the lineup score.
+POINT_SHARE_NOTE <- "Each week, a team's F1 points are split among its starters in proportion to their share of the lineup score."
+point_share <- function(D) {
+  D$lu %>% filter(used) %>% group_by(week, franchise_id) %>% mutate(share = score / sum(score)) %>% ungroup() %>%
+    left_join(D$res %>% select(week, franchise_id, F1Pts), by = c("week", "franchise_id")) %>%
+    mutate(f1 = coalesce(share * F1Pts, 0)) %>%
+    group_by(player_id, player_name, pos, franchise_id, Name) %>%
+    summarise(F1 = sum(f1), Lineup = sum(score), Starts = n(), .groups = "drop") %>%
+    arrange(desc(F1), desc(Lineup))
+}
+
+point_share_league <- function(D, n = 20) {
+  d <- point_share(D) %>% head(n) %>%
+    mutate(k = row_number(), posc = paste0('<span class="slot-g">', pos, '</span>'),
+           pl = pmap_chr(list(player_name, Name), function(p, o) team_cell(short_name(p), o)),
+           f1c = paste0('<span class="big">', fmt1(F1), '</span>'), lp = fmt1(Lineup))
+  sec("pointshare", "F1 Points by Player",
+      p(class = "dek", "Which players have earned their teams the most F1 points this season."),
+      mtable(d, list("#" = "k", Pos = "posc", Player = "pl", "F1 earned" = "f1c", "Lineup pts" = "lp"), left = 3,
+             cls = "cap tm", widths = c("1.4rem", "2rem", NA, "3.2rem", "3.4rem")),
+      div(class = "note", POINT_SHARE_NOTE))
+}
+
+point_share_team <- function(ps, fid, n = 5) {
+  t <- ps %>% filter(franchise_id == fid) %>% head(n)
+  div(h3(class = "rs-sub", "F1 points by player"),
+      div(class = "tp-list", if (nrow(t)) lapply(seq_len(nrow(t)), function(j) div(class = "tp-row",
+          span(short_name(t$player_name[j]), tags$small(sprintf("%s · %s lineup pts", t$pos[j], fmt1(t$Lineup[j])))), tags$b(fmt1(t$F1[j]))))
+          else div(class = "tp-row", span("No F1 points yet"), HTML(nil))))
+}
+
+# ---- Standings: Season Heat Map --------------------------------------------------------------------
+SHOW_ODDS_MOVERS <- FALSE   # Title Odds Movers is built but kept off the site for now (odds_movers())
+season_heat <- function(D) {
+  W <- D$WEEK; ord <- D$st$Name
+  d <- D$res %>% filter(week <= W) %>%
+    mutate(Name = factor(Name, levels = rev(ord)), fin = vapply(rank, finish_lbl, ""), r = pmin(rank, 12))
+  p <- ggplot(d, aes(week, Name)) +
+    geom_tile(aes(fill = r), colour = "#0a0a0a", linewidth = 1.2) +
+    geom_text(aes(label = round(points), colour = r <= 3), size = 2.6, family = "Inter", fontface = "bold", nudge_y = .12) +
+    geom_text(aes(label = fin, colour = r <= 3), size = 1.75, family = "Inter", nudge_y = -.25, alpha = .85) +
+    scale_fill_gradientn(colours = c(GOLD, "#B8963A", "#5a4b1e", "#2a2a2a", "#161616"), values = c(0, .12, .35, .65, 1), limits = c(1, 12)) +
+    scale_colour_manual(values = c(`TRUE` = "#0a0a0a", `FALSE` = "#e8e8e8")) +
+    scale_x_continuous(breaks = seq_len(W), labels = paste0("W", seq_len(W)), position = "top", expand = c(0, 0)) +
+    labs(x = NULL, y = NULL) + theme_gts() +
+    theme(panel.grid = element_blank(), axis.text.y = element_text(colour = "#e8e8e8", size = 8.5, face = "bold"), axis.text.x = element_text(size = 7.5))
+  sec("heat", "Season Heat Map",
+      p(class = "dek", "Every weekly score, shaded by that week's finish. Rows in standings order."),
+      svg_chart(p, w = 4.2, h = .7 + .3 * length(ord)),
+      div(class = "key", HTML(sprintf('<span><i class="sw" style="background:%s"></i>1st</span><span><i class="sw" style="background:#5a4b1e"></i>Middle</span><span><i class="sw" style="background:#161616;border:1px solid #333"></i>12th</span>', GOLD))),
+      div(class = "note", "Big number: weekly score. Small: that week's finish."))
+}
+
+# ---- Week in Review: Top Weekly Scores (from last year's report) --------------------------------
+top_weekly_scores <- function(D, n = 10) {
+  top <- D$res %>% filter(week <= D$WEEK) %>% arrange(desc(points)) %>% head(n)
+  rows <- lapply(seq_len(nrow(top)), function(i) { x <- top[i, ]
+    pl <- D$lu %>% filter(week == x$week, franchise_id == x$franchise_id, used) %>% slice_max(score, n = 5, with_ties = FALSE)
+    div(class = "tp-row",
+        span(tags$b(sprintf("%d. %s", i, x$Name)), tags$small(sprintf("Wk %d · %s", x$week, finish_lbl(x$rank))),
+             tags$small(class = "tw-pl", paste(sprintf("%s %s", sub(",.*$", "", pl$player_name), fmt1(pl$score)), collapse = " · "))),
+        tags$b(fmt1(x$points)))
+  })
+  sec("topweeks", "Top Weekly Scores", p(class = "dek", "The season's best team weeks, with the five starters who scored most."),
+      div(class = "tp-list tw", rows))
+}
+
+# ---- Team Pages: League Leaders by position (from last year's report) ---------------------------
+league_leaders <- function(D, n = 5) {
+  pts <- if (!is.null(D$ytd)) D$ytd %>% rename(Pts = ytd) else D$lu %>% distinct(week, player_id, .keep_all = TRUE) %>% group_by(player_id) %>% summarise(Pts = sum(score))
+  g <- D$lu %>% distinct(week, player_id, .keep_all = TRUE) %>% group_by(player_id) %>% summarise(G = sum(score != 0), .groups = "drop")
+  r <- D$ros %>% filter(pos %in% SKILL) %>% left_join(D$teams %>% select(franchise_id, Name), by = "franchise_id") %>%
+    inner_join(pts, by = "player_id") %>% left_join(g, by = "player_id") %>% mutate(ppg = ifelse(coalesce(G, 0L) > 0, Pts / G, NA))
+  boxes <- lapply(SKILL, function(p) {
+    d <- r %>% filter(pos == p) %>% arrange(desc(Pts)) %>% head(n) %>%
+      mutate(pl = pmap_chr(list(player_name, Name), function(a, o) team_cell(short_name(a), o)),
+             pt = paste0('<span class="big">', fmt1(Pts), '</span>'), pg = ifelse(is.na(ppg), nil, fmt1(ppg)))
+    div(h3(class = "rs-sub", p), mtable(d, list(Player = "pl", Pts = "pt", PPG = "pg"), left = 1, cls = "cap", widths = c(NA, "3.2rem", "2.6rem")))
+  })
+  sec("leaders", "League Leaders", p(class = "dek", "Top season scorers at each position among rostered players."),
+      div(class = "tp-cols", boxes[[1]], boxes[[2]]), div(class = "tp-cols", boxes[[3]], boxes[[4]]),
+      div(class = "note", "Season fantasy points on any team; owner is the current team. PPG counts games with a score."))
+}
+
+# ---- Team Pages: best single weeks of F1 points by a player ---------------------------------------
+point_share_weeks <- function(D, n = 10) {
+  d <- D$lu %>% filter(used) %>% group_by(week, franchise_id) %>% mutate(share = score / sum(score)) %>% ungroup() %>%
+    left_join(D$res %>% select(week, franchise_id, F1Pts), by = c("week", "franchise_id")) %>%
+    mutate(f1 = share * F1Pts) %>% filter(f1 > 0) %>% arrange(desc(f1), desc(score)) %>% head(n) %>%
+    mutate(k = row_number(), posc = paste0('<span class="slot-g">', pos, '</span>'),
+           pl = pmap_chr(list(player_name, Name, week), function(p, o, w) team_cell(short_name(p), sprintf("%s · Wk %d", o, w))),
+           f1c = paste0('<span class="big">', fmt1(f1), '</span>'), sc = fmt1(score), tf = vapply(F1Pts, fmtpt, ""))
+  sec("pointweeks", "Best Single Weeks, F1 Points",
+      mtable(d, list("#" = "k", Pos = "posc", Player = "pl", "F1 earned" = "f1c", Pts = "sc", "Team F1" = "tf"), left = 3,
+             cls = "cap tm", widths = c("1.4rem", "2rem", NA, "3.2rem", "2.6rem", "2.8rem")),
+      div(class = "note", POINT_SHARE_NOTE))
 }
