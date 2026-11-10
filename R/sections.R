@@ -279,6 +279,7 @@ section_office <- function(D) {
         div(class = "note", paste0("+ added  − dropped  ⇄ traded for. Waiver bid on the right; FA = no bid.",
                                    if (length(quiet)) paste0(" No moves: ", and_list(quiet), ".") else ""))),
     sec("traded", "Traded Cap", tct, div(class = "note", "Net cap money received (+) or sent (−) in trades, by cap year."), newbox),
+    traded_ledger(D),
     sec("pickups", "Best Pickups", bpt, div(class = "note", "2026 waiver and free agent adds, ranked by points they scored in their team's best-ball lineup since the add (Pts).")),
     sec("faab", "FAAB and Activity", fat, div(class = "note", "FAAB left out of $100. Trades and adds for the 2026 league year, offseason included.")))
 }
@@ -747,4 +748,35 @@ point_share_weeks <- function(D, n = 10) {
       mtable(d, list("#" = "k", Pos = "posc", Player = "pl", "F1 earned" = "f1c", Pts = "sc", "Team F1" = "tf"), left = 3,
              cls = "cap tm", widths = c("1.4rem", "2rem", NA, "3.2rem", "2.6rem", "2.8rem")),
       div(class = "note", POINT_SHARE_NOTE))
+}
+
+# ---- Front Office: Traded Cap Ledger -----------------------------------------------------------------
+# Every row of the league sheet's traded tab, in sheet order, so the league can check the Traded Cap totals.
+traded_ledger <- function(D) {
+  tr <- D$trd$all
+  if (is.null(tr) || !nrow(tr)) return(NULL)
+  if (!"is_new" %in% names(tr)) tr$is_new <- FALSE
+  yrs <- sort(unique(tr$Year))
+  body <- lapply(yrs, function(y) { g <- tr %>% filter(Year == y) %>% arrange(sheet_row)
+    tagList(tags$tr(class = "rg", tags$td(colspan = 4, sprintf("%d cap · $%s", y, fmtpt(sum(g$Amount))))),
+      lapply(seq_len(nrow(g)), function(i) { x <- g[i, ]
+        tags$tr(tags$td(class = "lg-n", x$sheet_row), tags$td(HTML(paste0(htmlEscape(x$Sender), if (x$is_new) ' <span class="new-tag">NEW</span>'))),
+                tags$td(x$Receiver), tags$td(class = "r", HTML(paste0('<span class="big">$', fmtpt(x$Amount), '</span>')))) }))
+  })
+  led <- tags$table(class = "mt ros ledger", `data-quarto-disable-processing` = "true",
+    tags$thead(tags$tr(tags$th(style = "width:1.8rem", "#"), tags$th("From"), tags$th("To"), tags$th(class = "r", style = "width:3.2rem", "$"))),
+    tags$tbody(body))
+  # per-team check: received, sent and net per cap year (net equals the Traded Cap table)
+  chk <- bind_rows(tr %>% transmute(Name = Receiver, Year, rec = Amount, snt = 0), tr %>% transmute(Name = Sender, Year, rec = 0, snt = Amount)) %>%
+    group_by(Name, Year) %>% summarise(rec = sum(rec), snt = sum(snt), .groups = "drop") %>% mutate(net = rec - snt)
+  ck <- D$teams %>% select(Name) %>% tidyr::crossing(Year = yrs) %>% left_join(chk, by = c("Name", "Year")) %>%
+    mutate(across(c(rec, snt, net), ~ coalesce(.x, 0))) %>% arrange(Year, desc(net))
+  ctab <- lapply(yrs, function(y) { d <- ck %>% filter(Year == y) %>%
+      mutate(rc = ifelse(rec == 0, nil, paste0("$", vapply(rec, fmtpt, ""))), sc = ifelse(snt == 0, nil, paste0("$", vapply(snt, fmtpt, ""))), nc = signed_c(net))
+    div(h3(class = "rs-sub", sprintf("%d check", y)),
+        mtable(d, list(Team = "Name", Received = "rc", Sent = "sc", Net = "nc"), left = 1, cls = "cap", widths = c(NA, "3.6rem", "3.2rem", "3.4rem"))) })
+  sec("ledger", "Traded Cap Ledger",
+      p(class = "dek", "Every traded cap transaction, as entered in the league sheet."),
+      led, div(class = "tp-cols", ctab),
+      div(class = "note", "Every row from the league's traded cap sheet. Nicknames shown as owner names. # is the sheet row. Net matches the Traded Cap table."))
 }

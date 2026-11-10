@@ -62,9 +62,11 @@ traded_summary <- function(lg, week) {
     extra <- pmax(as.integer(k) - as.integer(kp), 0); names(extra) <- names(k)
     tr %>% group_by(row) %>% filter(row_number() <= extra[row[1]]) %>% ungroup()
   } else NULL
+  # the ledger flags the extra occurrences of each row as new: the latest ones in sheet order
+  tr <- tr %>% group_by(row) %>% mutate(is_new = if (is.null(new)) FALSE else row_number() > n() - sum(new$row == row[1])) %>% ungroup()
   net <- bind_rows(lapply(sort(unique(tr$Year)), function(y)
     traded_by_owner(tr, lg$teams$Name, y) %>% mutate(Year = y))) %>%
     tidyr::pivot_wider(names_from = Year, values_from = Traded, values_fill = 0)
   list(net = lg$teams %>% select(Name) %>% left_join(net, by = "Name") %>% mutate(across(-Name, ~ replace_na(.x, 0))),
-       new = new, first_week = is.null(new))
+       new = new, first_week = is.null(new), all = tr)
 }

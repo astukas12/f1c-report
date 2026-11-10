@@ -142,8 +142,9 @@ build_standings <- function(results, wk) {
 # Traded revenue ledger: the league sheet `traded` tab (Sender, Receiver, Amount, Year)
 load_traded <- function() {
   read_sheet(LEAGUE_SS, sheet = "traded") %>%
+    mutate(sheet_row = row_number() + 1L) %>%   # row number as seen in the sheet (row 1 is the header)
     filter(!is.na(Year)) %>%
-    select(Sender, Receiver, Amount, Year) %>%
+    select(sheet_row, Sender, Receiver, Amount, Year) %>%
     mutate(Sender = fix_owner(Sender), Receiver = fix_owner(Receiver))
 }
 
