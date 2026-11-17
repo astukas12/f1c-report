@@ -225,7 +225,6 @@ section_money <- function(D) {
     sec("cap", "2027 Cap Check", div(class = "scroll-x", cap),
         div(class = "note", paste0("As if the season ended today. Total cap = $230 + weekly F1 + seasonal F1 (by current standing) + socialism + traded. Socialism: total F1 over 100 is shared with teams under 100.", soc_note,
                                    " 2028 $: salary already under contract for 2028 (at 2026 salary), with 2028 traded cap below it."))),
-    buying_power(D),
     returning_production(D),
     contract_timeline(D),
     contract_value(D),
@@ -420,8 +419,7 @@ section_alltime <- function(D) {
         div(class = "note", sprintf("Career F1 = weekly F1 points, 2022 to %d so far. 2024 scored the top 5 only (16/11/7/4/1). Avg fin = average final finish in completed seasons.", SEASON))),
     sec("champions", "Champions", div(class = "ch-grid", cards),
         div(class = "note", "2024 was a 10-team league that scored the top 5 each week (16/11/7/4/1).")),
-    owner_history(D),
-    career_h2h(D))
+    owner_history(D))
 }
 
 section_body <- function(page, D) switch(page, index = section_standings(D), review = section_review(D), sims = section_sims(D),
