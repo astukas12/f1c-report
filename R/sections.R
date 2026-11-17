@@ -51,7 +51,8 @@ section_standings <- function(D) {
     sec("final", "Standings vs. Final Finish",
         p(class = "dek", "How closely the standings after each week matched the final standings (0 = no relation, 100 = identical)."),
         settle_chart(D$hp, W), settle_rows(D$hp, W),
-        div(class = "note", sprintf("Seasons %s, official tiebreak.", and_list(HIST_YEARS)))))
+        div(class = "note", sprintf("Seasons %s, official tiebreak.", and_list(HIST_YEARS)))),
+    week_history(D))
 }
 
 # ---- 2. Week in Review ----------------------------------------------------------------------
@@ -173,6 +174,7 @@ section_sims <- function(D) {
     sec("odds", sprintf("Title Odds after week %d", W), kicker = "GTS Sim Center", tag = "Sims by <b>Golden Ticket Sims</b>",
         p(class = "dek", sprintf("%s simulated finishes to the season, from this season's results only.", format(ROS_N, big.mark = ","))),
         tbl, div(class = "note", "Title = most F1 points after week 18. Wk = change in title odds since last week. Sims by Golden Ticket Sims.")),
+    final_range(D),
     if (SHOW_ODDS_MOVERS) odds_movers(D),
     sec("oddsweek", "Title Odds by Week", kicker = "GTS Sim Center", p(class = "dek", "Each week's odds, rerun with the results to that point."),
         svg_chart(p, h = 3.8), div(class = "key", HTML('<span><i class="sw" style="background:#3a3a3a"></i>Others under 1%</span>')), div(class = "note", "How it works: each team's weekly scoring level is its average so far. Every simulated week draws a score for each team, ranks the 12 and awards 15/10/7/4/2/1 F1 points. A team's level can drift week to week (injuries, trades, waivers), so nothing is locked in. Checked against 2022, 2023 and 2025.")),
@@ -223,6 +225,8 @@ section_money <- function(D) {
     sec("cap", "2027 Cap Check", div(class = "scroll-x", cap),
         div(class = "note", paste0("As if the season ended today. Total cap = $230 + weekly F1 + seasonal F1 (by current standing) + socialism + traded. Socialism: total F1 over 100 is shared with teams under 100.", soc_note,
                                    " 2028 $: salary already under contract for 2028 (at 2026 salary), with 2028 traded cap below it."))),
+    buying_power(D),
+    returning_production(D),
     contract_timeline(D),
     contract_value(D),
     sec("fa", "2027 Free Agents", tiles, fat,
@@ -279,6 +283,7 @@ section_office <- function(D) {
         div(class = "note", paste0("+ added  − dropped  ⇄ traded for. Waiver bid on the right; FA = no bid.",
                                    if (length(quiet)) paste0(" No moves: ", and_list(quiet), ".") else ""))),
     sec("traded", "Traded Cap", tct, div(class = "note", "Net cap money received (+) or sent (−) in trades, by cap year."), newbox),
+    traded_map(D),
     traded_ledger(D),
     sec("pickups", "Best Pickups", bpt, div(class = "note", "2026 waiver and free agent adds, ranked by points they scored in their team's best-ball lineup since the add (Pts).")),
     sec("faab", "FAAB and Activity", fat, div(class = "note", "FAAB left out of $100. Trades and adds for the 2026 league year, offseason included.")))
@@ -414,7 +419,9 @@ section_alltime <- function(D) {
     sec("alltime", "All-Time Standings", at,
         div(class = "note", sprintf("Career F1 = weekly F1 points, 2022 to %d so far. 2024 scored the top 5 only (16/11/7/4/1). Avg fin = average final finish in completed seasons.", SEASON))),
     sec("champions", "Champions", div(class = "ch-grid", cards),
-        div(class = "note", "2024 was a 10-team league that scored the top 5 each week (16/11/7/4/1).")))
+        div(class = "note", "2024 was a 10-team league that scored the top 5 each week (16/11/7/4/1).")),
+    owner_history(D),
+    career_h2h(D))
 }
 
 section_body <- function(page, D) switch(page, index = section_standings(D), review = section_review(D), sims = section_sims(D),
@@ -684,7 +691,7 @@ point_share_team <- function(ps, fid, n = 5) {
 }
 
 # ---- Standings: Season Heat Map --------------------------------------------------------------------
-SHOW_ODDS_MOVERS <- FALSE   # Title Odds Movers is built but kept off the site for now (odds_movers())
+SHOW_ODDS_MOVERS <- TRUE    # Title Odds Movers on the Sim Center (turned back on for week 10)
 season_heat <- function(D) {
   W <- D$WEEK; ord <- D$st$Name
   d <- D$res %>% filter(week <= W) %>%
@@ -779,4 +786,195 @@ traded_ledger <- function(D) {
       p(class = "dek", "Every traded cap transaction, as entered in the league sheet."),
       led, div(class = "tp-cols", ctab),
       div(class = "note", "Every row from the league's traded cap sheet. Nicknames shown as owner names. # is the sheet row. Net matches the Traded Cap table."))
+}
+
+# ---- Sim Center: Projected Final Range -------------------------------------------------------------
+final_range <- function(D) {
+  W <- D$WEEK
+  d <- D$ohist %>% filter(week == W)
+  if (!nrow(d) || all(is.na(d$P10))) return(NULL)
+  d <- d %>% arrange(Proj) %>% mutate(Name = factor(Name, levels = Name))
+  p <- ggplot(d, aes(y = Name)) +
+    geom_segment(aes(x = P10, xend = P90, yend = Name), colour = "#4a4020", linewidth = 4.2, lineend = "round") +
+    geom_point(aes(x = Proj), shape = 124, size = 6, colour = GOLD) +
+    geom_point(aes(x = Current), colour = "#F2F2F2", size = 2.1) +
+    geom_text(aes(x = P90, label = round(Proj)), hjust = -.6, colour = "#d6d6d6", size = 2.9, family = "Inter", fontface = "bold") +
+    scale_x_continuous(expand = expansion(mult = c(.02, .16))) +
+    labs(x = "Final F1 points", y = NULL) + theme_gts() +
+    theme(panel.grid.major.y = element_blank(), axis.text.y = element_text(colour = "#e8e8e8", size = 9.5, face = "bold"))
+  sec("finalrange", "Projected Final Range", kicker = "GTS Sim Center", tag = "Sims by <b>Golden Ticket Sims</b>",
+      p(class = "dek", sprintf("Where each team's season could end after week %d, from the season sim.", LAST_WEEK)),
+      div(class = "key", HTML(sprintf('<span><i class="sw" style="background:#4a4020"></i>10th to 90th percentile</span><span><i class="sw" style="background:%s;width:3px"></i>Projected</span><span><i class="sw" style="background:#F2F2F2;border-radius:50%%"></i>F1 now</span>', GOLD))),
+      svg_chart(p, w = 4, h = .9 + .28 * nrow(d)),
+      div(class = "note", "Bar: the middle 80% of simulated final F1 totals. Gold mark and number: projected final F1 (sim average). Dot: F1 points so far. Sorted by projection."))
+}
+
+# ---- Front Office: Traded Cap Map (who sent cap to whom) --------------------------------------------
+traded_map <- function(D) {
+  tr <- D$trd$all
+  if (is.null(tr) || !nrow(tr)) return(NULL)
+  yrs <- sort(unique(tr$Year))
+  f <- tr %>% group_by(Sender, Receiver, Year) %>% summarise(a = sum(Amount), n = n(), .groups = "drop") %>%
+    group_by(Sender, Receiver) %>% mutate(tot = sum(a), deals = sum(n)) %>% ungroup()
+  pairs <- f %>% distinct(Sender, Receiver, tot, deals) %>% arrange(desc(tot), Sender)
+  mx <- max(pairs$tot)
+  rows <- lapply(seq_len(nrow(pairs)), function(i) { x <- pairs[i, ]
+    split_y <- f %>% filter(Sender == x$Sender, Receiver == x$Receiver) %>% arrange(Year)
+    div(class = "flow-row",
+        div(class = "flow-lbl", span(x$Sender), span(class = "flow-arrow", "→"), tags$b(x$Receiver)),
+        div(class = "flow-bar", tags$i(style = sprintf("width:%.0f%%", 100 * x$tot / mx))),
+        div(class = "flow-val", tags$b(paste0("$", fmtpt(x$tot))),
+            tags$small(paste(sprintf("'%s $%s", substr(split_y$Year, 3, 4), vapply(split_y$a, fmtpt, "")), collapse = " · "))))
+  })
+  tot_in <- tr %>% group_by(Receiver) %>% summarise(a = sum(Amount), .groups = "drop") %>% arrange(desc(a))
+  tot_out <- tr %>% group_by(Sender) %>% summarise(a = sum(Amount), .groups = "drop") %>% arrange(desc(a))
+  sec("tradedmap", "Traded Cap Map",
+      p(class = "dek", sprintf("Who has sent cap money to whom, %s combined. Biggest flows first.", paste(yrs, collapse = " and "))),
+      div(class = "flow", rows),
+      div(class = "fact-line", HTML(sprintf("<b>Most received: %s, $%s. Most sent: %s, $%s.</b>",
+                                            tot_in$Receiver[1], fmtpt(tot_in$a[1]), tot_out$Sender[1], fmtpt(tot_out$a[1])))),
+      div(class = "note", "Each line totals every traded cap row from sender to receiver; the small figures split it by cap year. Rows are listed one by one in the ledger below."))
+}
+
+# ---- Money & Cap: Returning Production (16 Nov 2026) ----------------------------------------------
+# Share of each team's 2026 lineup points scored by players still on that roster and signed for 2027.
+returning_production <- function(D) {
+  ros <- D$ros %>% select(franchise_id, player_id, cy = contract_years)
+  d <- D$lu %>% filter(used) %>% left_join(ros, by = c("franchise_id", "player_id")) %>%
+    mutate(back = coalesce(cy, 0) >= 1)
+  t <- d %>% group_by(Name) %>% summarise(tot = sum(score), ret = sum(score[back]), .groups = "drop") %>%
+    mutate(pct = 100 * ret / tot) %>% arrange(pct) %>% mutate(Name = factor(Name, levels = Name))
+  gone <- d %>% filter(!back) %>% semi_join(ros, by = c("franchise_id", "player_id")) %>%
+    group_by(Name, player_id, player_name, pos) %>% summarise(pts = sum(score), .groups = "drop") %>% arrange(desc(pts)) %>% head(8) %>%
+    mutate(k = row_number(), posc = paste0('<span class="slot-g">', pos, '</span>'),
+           pl = pmap_chr(list(player_name, as.character(Name)), function(p, o) team_cell(short_name(p), o)),
+           pc = paste0('<span class="big">', fmt1(pts), '</span>'))
+  p <- ggplot(t, aes(y = Name)) +
+    geom_col(aes(x = 100), fill = "#1c1c1c", width = .62) +
+    geom_col(aes(x = pct), fill = GOLD, width = .62) +
+    geom_text(aes(x = 103, label = sprintf("%d%%  ·  %s of %s", round(pct), round(ret), round(tot))), hjust = 0, colour = "#d6d6d6", size = 2.7, family = "Inter") +
+    scale_x_continuous(limits = c(0, 168), breaks = c(0, 50, 100), labels = c("0%", "50%", "100%")) +
+    labs(x = NULL, y = NULL) + theme_gts() +
+    theme(panel.grid.major.y = element_blank(), axis.text.y = element_text(colour = "#e8e8e8", size = 9.5, face = "bold"))
+  hi <- t %>% slice_max(pct, n = 1, with_ties = FALSE); lo <- t %>% slice_min(pct, n = 1, with_ties = FALSE)
+  sec("returning", "Returning Production",
+      p(class = "dek", "How much of each team's 2026 lineup scoring is signed for 2027."),
+      svg_chart(p, w = 4, h = .7 + .28 * nrow(t)),
+      div(class = "fact-line", HTML(sprintf("<b>Most coming back: %s, %d%%. Least: %s, %d%%.</b>", hi$Name, round(hi$pct), lo$Name, round(lo$pct)))),
+      if (nrow(gone)) tagList(h3(class = "rs-sub", "Top scorers not signed for 2027"),
+        mtable(gone, list("#" = "k", Pos = "posc", Player = "pl", "Pts" = "pc"), left = 3, cls = "cap", widths = c("1.4rem", "2rem", NA, "3.4rem"))),
+      div(class = "note", "Lineup points: best-ball lineup points scored for that team this season. Returning: still on the roster with a contract that runs through 2027. Expiring deals, pickups and players since traded away count as not returning."))
+}
+
+# ---- Money & Cap: 2027 Buying Power (16 Nov 2026) -------------------------------------------------
+buying_power <- function(D) {
+  tg <- D$tags %>% arrange(tag)
+  d <- D$cc %>% select(Name, CapSpace, Signed) %>% arrange(CapSpace) %>% mutate(Name = factor(Name, levels = Name), ok = CapSpace >= 0)
+  lo <- min(0, min(d$CapSpace)); hi <- max(d$CapSpace, max(tg$tag))
+  p <- ggplot(d, aes(y = Name)) +
+    geom_vline(data = tg, aes(xintercept = tag), colour = "#8a7a35", linetype = "22", linewidth = .45) +
+    geom_text(data = tg %>% mutate(y = nrow(d) + .85 + .7 * ((row_number() - 1) %% 2)), aes(x = tag, y = y, label = paste0(pos, " $", tag)),
+              colour = "#b9a24e", size = 2.3, family = "Inter", inherit.aes = FALSE) +
+    geom_col(aes(x = CapSpace, fill = ok), width = .62) +
+    geom_vline(xintercept = 0, colour = "#555") +
+    geom_text(aes(x = pmax(CapSpace, 0) + (hi - lo) * .02, label = money_s(CapSpace)), hjust = 0, colour = "#e8e8e8", size = 2.8, family = "Inter", fontface = "bold") +
+    scale_fill_manual(values = c(`TRUE` = GOLD, `FALSE` = NEG_C)) +
+    scale_x_continuous(limits = c(lo * 1.05, hi * 1.25), labels = function(x) money_s(x)) +
+    scale_y_discrete(expand = expansion(add = c(.6, 2))) +
+    labs(x = "2027 cap space", y = NULL) + theme_gts() +
+    theme(panel.grid.major.y = element_blank(), axis.text.y = element_text(colour = "#e8e8e8", size = 9.5, face = "bold"))
+  n_top <- sum(D$cc$CapSpace >= max(tg$tag)); n_any <- sum(D$cc$CapSpace >= min(tg$tag))
+  top_pos <- tg$pos[which.max(tg$tag)]
+  fa <- D$fas %>% filter(pos %in% tg$pos) %>% arrange(desc(Pts)) %>% head(5) %>% left_join(tg, by = "pos") %>%
+    mutate(fit = vapply(tag, function(x) sum(D$cc$CapSpace >= x), 0L))
+  fa_line <- paste(sprintf("%s (%s, tag $%s): %d %s", short_name(fa$player_name), fa$pos, fa$tag, fa$fit, ifelse(fa$fit == 1, "team", "teams")), collapse = " · ")
+  sec("buying", "2027 Buying Power",
+      p(class = "dek", "2027 cap space set against what each franchise tag costs."),
+      svg_chart(p, w = 4, h = 1 + .28 * nrow(d)),
+      div(class = "fact-line", HTML(sprintf("<b>%d %s could cover the most expensive tag (%s, $%s). %d could cover at least one tag.</b>",
+                                            n_top, ifelse(n_top == 1, "team", "teams"), top_pos, max(tg$tag), n_any))),
+      div(class = "fact-line", HTML(paste0("Top 2026 scorers heading to free agency, and how many teams have room for their tag: ", htmlEscape(fa_line)))),
+      div(class = "note", "Cap space as on the 2027 Cap Check table, as if the season ended today. Dashed lines: tag cost by position (avg of the top 3 QB/TE or top 5 RB/WR salaries)."))
+}
+
+# ---- Standings: Week N History (16 Nov 2026) ------------------------------------------------------
+# Each standings spot now, against where the team in that spot after the same week finished in past seasons.
+week_history <- function(D) {
+  W <- D$WEEK
+  h <- D$hp %>% filter(week == W) %>% distinct(year, pos, owner, final)
+  if (!nrow(h)) return(NULL)
+  yrs <- sort(unique(h$year))
+  ycol <- paste0("y", yrs)
+  one <- function(k) { x <- h %>% filter(pos == k)
+    fins <- setNames(lapply(yrs, function(y) { f <- x$final[x$year == y]
+      if (!length(f)) nil else paste0('<span class="fin', ifelse(f[1] <= 3, " top", ""), '">', ordinal(f[1]), '</span>') }), ycol)
+    as_tibble(c(fins, list(avg = mean(x$final), titles = sum(x$final == 1)))) }
+  rows <- D$st %>% select(Pos, Name) %>% bind_cols(bind_rows(lapply(D$st$Pos, one))) %>%
+    mutate(posc = paste0('<span class="fin', ifelse(Pos <= 3, " top", ""), '">', vapply(Pos, ordinal, ""), '</span>'),
+           team = vapply(Name, function(n) team_cell(n), ""), ac = sprintf('<span class="big">%.1f</span>', avg),
+           tc = ifelse(titles > 0, strrep("\U0001F3C6", titles), nil))
+  cols <- c(list(Now = "posc", Team = "team"), setNames(as.list(ycol), paste0("'", substr(yrs, 3, 4))), list(Avg = "ac", Titles = "tc"))
+  within2 <- mean(abs(h$final - h$pos) <= 2)
+  ch <- h %>% filter(final == 1) %>% arrange(year)
+  sec("weekhist", sprintf("Week %d History", W),
+      p(class = "dek", sprintf("Each spot in the standings now, and where the team in that spot after week %d finished in %s.", W, and_list(yrs))),
+      mtable(rows, cols, left = 2, cls = "cap", widths = c("2.6rem", NA, rep("2.4rem", length(yrs)), "2.4rem", "2.6rem"),
+             groups = list(c(" ", 2), c("Finished", length(yrs)), c(" ", 2))),
+      div(class = "fact-line", HTML(sprintf("<b>Past champions stood %s after week %d. %d%% of teams finished within two spots of where they stood.</b>",
+                                            and_list(sprintf("%s (%s %d)", vapply(ch$pos, ordinal, ""), ch$owner, ch$year)), W, round(100 * within2)))),
+      div(class = "note", sprintf("Standings after week %d in %s, against the final standings. 2024 is left out: it was a 10-team league.", W, and_list(yrs))))
+}
+
+# ---- All-Time: Owner History (16 Nov 2026) --------------------------------------------------------
+owner_history <- function(D) {
+  f <- team_history(D)$fin %>% filter(owner %in% D$teams$Name)
+  ord <- f %>% group_by(owner) %>% summarise(a = mean(fin), .groups = "drop") %>% arrange(a) %>% pull(owner)
+  f <- f %>% mutate(owner = factor(owner, levels = ord))
+  yrs <- sort(unique(f$year))
+  p <- ggplot(f, aes(year, fin)) +
+    geom_hline(yintercept = 1, colour = GOLD, linewidth = .35, linetype = "22") +
+    geom_hline(yintercept = 3, colour = "#8a7a35", linewidth = .35, linetype = "22") +
+    geom_hline(yintercept = 6, colour = "#3a3a3a", linewidth = .35, linetype = "22") +
+    geom_line(colour = "#7a7a7a", linewidth = .8) +
+    geom_point(aes(colour = fin == 1), size = 3.4) +
+    geom_text(aes(label = fin), colour = "#0a0a0a", size = 1.9, family = "Inter", fontface = "bold") +
+    facet_wrap(~ owner, ncol = 3) +
+    scale_colour_manual(values = c(`TRUE` = GOLD, `FALSE` = "#d6d6d6")) +
+    scale_y_reverse(limits = c(12.5, .5), breaks = c(1, 6, 12)) +
+    scale_x_continuous(breaks = yrs, labels = paste0("'", substr(yrs, 3, 4)), expand = expansion(add = .45)) +
+    labs(x = NULL, y = NULL) + theme_gts() +
+    theme(strip.text = element_text(colour = "#e8e8e8", face = "bold", size = 8.5, hjust = 0), panel.grid.major.x = element_blank(),
+          axis.text = element_text(size = 6.5), panel.spacing = unit(.5, "lines"))
+  sec("ownerhist", "Owner History",
+      p(class = "dek", sprintf("Each current owner's finish by season, %d to %d.", min(yrs), max(yrs))),
+      svg_chart(p, w = 4.2, h = 5.2),
+      div(class = "key", HTML(sprintf('<span><i class="sw" style="background:%s;border-radius:50%%"></i>Title</span><span><i class="dash"></i>1st / 3rd / 6th</span>', GOLD))),
+      div(class = "note", sprintf("%d is the current standing after week %d. 2024 was a 10-team league. Sorted by average finish.", SEASON, D$WEEK)))
+}
+
+# ---- All-Time: Career Head to Head (16 Nov 2026) --------------------------------------------------
+# Every week both owners played, 2022 on (2024 left out: 10-team league). Ties count half.
+career_h2h <- function(D) {
+  w <- team_history(D)$w %>% filter(year %in% c(HIST_YEARS, SEASON), owner %in% D$teams$Name) %>% select(year, week, owner, score)
+  m <- w %>% inner_join(w, by = c("year", "week"), suffix = c("", "_o"), relationship = "many-to-many") %>% filter(owner != owner_o) %>%
+    group_by(owner, owner_o) %>% summarise(wn = sum(score > score_o) + .5 * sum(score == score_o), n = n(), .groups = "drop")
+  rec <- m %>% group_by(owner) %>% summarise(W = sum(wn), L = sum(n) - sum(wn), .groups = "drop") %>% mutate(pct = W / (W + L))
+  ord <- rec %>% arrange(desc(pct), owner) %>% pull(owner)
+  mm <- m %>% mutate(share = wn / n, lbl = round(100 * share), owner = factor(owner, levels = rev(ord)), owner_o = factor(owner_o, levels = ord))
+  tot <- rec %>% transmute(owner = factor(owner, levels = rev(ord)), lbl = sprintf("%s\n%d%%", wl(W, L), round(100 * pct)))
+  p <- ggplot(mm, aes(owner_o, owner)) +
+    geom_tile(aes(fill = share), colour = "#0a0a0a", linewidth = .8) +
+    geom_text(aes(label = lbl), colour = "#f2f2f2", size = 2.3, family = "Inter", fontface = "bold") +
+    geom_text(data = tot, aes(x = length(ord) + 2, y = owner, label = lbl), colour = "#ffffff", size = 1.95, lineheight = .85, family = "Inter", fontface = "bold", inherit.aes = FALSE) +
+    scale_fill_gradient2(low = "#8E3B36", mid = "#262626", high = "#2F7A4D", midpoint = .5, limits = c(0, 1)) +
+    scale_x_discrete(position = "top", expand = expansion(add = c(.5, 3))) +
+    labs(x = NULL, y = NULL) + theme_gts() +
+    theme(panel.grid = element_blank(), axis.text.x.top = element_text(angle = 55, hjust = 0, vjust = 0, size = 7.5, colour = "#bdbdbd"),
+          axis.text.y = element_text(colour = "#e8e8e8", size = 7.5, face = "bold"), plot.margin = margin(4, 26, 2, 0))
+  b <- m %>% filter(n >= 18) %>% mutate(s = wn / n) %>% slice_max(s, n = 1, with_ties = FALSE)
+  sec("careerh2h", "Career Head to Head",
+      p(class = "dek", sprintf("Row owner's record against each column owner, every week both played, %s.", and_list(c(HIST_YEARS, SEASON)))),
+      svg_chart(p, w = 4.1, h = 4.6),
+      div(class = "fact-line", HTML(sprintf("<b>Most one-sided: %s over %s, %s.</b>", b$owner, b$owner_o, wl(b$wn, b$n - b$wn)))),
+      div(class = "note", "Cells: % of weeks the row owner outscored the column owner (green = row owner ahead). Ties count as half a win. Right: W-L and win % against the whole league. 2024 left out (10-team league)."))
 }
