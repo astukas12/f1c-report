@@ -132,10 +132,16 @@ sim_board <- function(lg, week, proj = NULL, gts = NULL, final = character()) {
     left_join(lg$teams, by = "franchise_id")
 }
 
-sim_week <- function(lg, week, board = NULL, nsim = SIM_N, seed = 42, gts = NULL) {
+# keep > 0: also return the first `keep` draws per board row (attr "draws": matrix rows = board rows, before
+# finished games are locked to actuals) and the GTS SimIDs they came from (attr "pick"), so the live page ships a
+# subsample of THIS run instead of re-simming (19 Nov 2026: Sim Center and live page are one sim).
+sim_week <- function(lg, week, board = NULL, nsim = SIM_N, seed = 42, gts = NULL, keep = 0) {
   board <- board %||% sim_board(lg, week, gts = gts)
   set.seed(seed)
   ids <- sort(unique(board$franchise_id))
+  board$.i <- seq_len(nrow(board))
+  DR <- if (keep > 0) matrix(0, nrow(board), keep) else NULL
+  pick <- NULL
   gdraw <- NULL
   # GTS: one SimID per simulated week, shared by every GTS player, so players in the same game
   # (on any F1C team) come from the same simulated game. Fewer GTS sims than nsim: resampled.
@@ -155,6 +161,7 @@ sim_week <- function(lg, week, board = NULL, nsim = SIM_N, seed = 42, gts = NULL
         exp(sweep(matrix(rnorm(nsim * length(live)), nsim), 2, d$sigma[live], "*") -
             matrix(d$sigma[live]^2 / 2, nsim, length(live), byrow = TRUE))
     if (!is.null(gdraw)) for (j in which(d$src == "gts" & !is.na(d$gkey))) m[, j] <- gdraw[[d$gkey[j]]]
+    if (keep > 0) DR[d$.i, ] <<- t(m[seq_len(keep), , drop = FALSE])
     fixed <- which(d$done)
     if (length(fixed)) m[, fixed] <- matrix(d$actual[fixed], nsim, length(fixed), byrow = TRUE)
     apply(m, 1, function(v) sum(v[!is.na(sim_fill(v, d$pos))]))
@@ -164,7 +171,7 @@ sim_week <- function(lg, week, board = NULL, nsim = SIM_N, seed = 42, gts = NULL
   det <- board %>% filter(!is.na(slot)) %>% group_by(franchise_id) %>%
     summarise(proj = sum(value), banked = sum(value[done]), .groups = "drop")
 
-  tibble(franchise_id = ids,
+  out <- tibble(franchise_id = ids,
          mean  = round(colMeans(scores), 1),
          win   = round(100 * colMeans(rk == 1), 1),
          top3  = round(100 * colMeans(rk <= 3), 1),
@@ -175,4 +182,6 @@ sim_week <- function(lg, week, board = NULL, nsim = SIM_N, seed = 42, gts = NULL
     arrange(desc(expF1)) %>%
     mutate(Pos = row_number()) %>%
     select(Pos, franchise_id, Name, Franchise, proj, banked, mean, win, top3, top6, expF1)
+  if (keep > 0) { attr(out, "draws") <- DR; attr(out, "pick") <- if (!is.null(pick)) pick[seq_len(keep)] }
+  out
 }

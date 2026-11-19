@@ -1,0 +1,1089 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F1C Live</title>
+<meta name="description" content="Fantasy1 Championship live scores and in-game sims, by Golden Ticket Sims.">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#0a0a0a; --fg:#e8e8e8; --gold:#E8C547; --muted:#8a8a8a; --faint:#5c5c5c; --line:#1f1f1f; --card:#111;
+        --down:#e5484d; --live:#E8C547; --soon:#5aa9e6; --done:#9a9a9a; }
+* { box-sizing: border-box; }
+html { color-scheme: dark; scroll-behavior: smooth; }
+body { margin:0; background:var(--bg); color:var(--fg); font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       font-feature-settings:"tnum" 1; letter-spacing:-.005em; line-height:1.45; }
+a { color:var(--gold); text-decoration:none; }
+/* app shell: sticky top bar, scoreboard strip, sticky section tabs */
+.top { position:sticky; top:0; z-index:30; height:48px; background:rgba(10,10,10,.94); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+.top .in { max-width:760px; margin:0 auto; height:100%; padding:0 16px; display:flex; align-items:center; gap:.6rem; font-size:.85rem; }
+.top b { color:#fff; font-weight:800; letter-spacing:-.01em; font-size:.98rem; white-space:nowrap; }
+.top .wk { color:var(--muted); font-weight:600; white-space:nowrap; }
+.top .pill { margin-left:auto; display:flex; align-items:center; gap:.35rem; font-size:.72rem; color:var(--muted); white-space:nowrap; }
+.top .pill .dot { margin:0; }
+.top a.lk { font-size:.74rem; white-space:nowrap; min-height:40px; display:flex; align-items:center; }
+.sb { max-width:760px; margin:0 auto; display:flex; gap:.5rem; overflow-x:auto; padding:.7rem 16px .55rem; scrollbar-width:none; scroll-snap-type:x proximity; }
+.sb::-webkit-scrollbar { display:none; }
+.gm { flex:0 0 auto; min-width:7.6rem; scroll-snap-align:start; background:var(--card); border:1px solid #1f1f1f; border-radius:10px; padding:.45rem .55rem; color:var(--fg); font:inherit; text-align:left; cursor:pointer; }
+.gm .gr { display:flex; align-items:center; justify-content:space-between; gap:.5rem; font-size:.8rem; line-height:1.55; }
+.gm .gr b { font-weight:700; color:#fff; }
+.gm .gs { font-size:.66rem; color:var(--faint); margin-top:.15rem; font-weight:600; }
+.gm.in { border-color:rgba(232,197,71,.5); } .gm.in .gs { color:var(--live); }
+.gm.pre .gs { color:var(--soon); }
+.gm.post .gr b { color:var(--muted); font-weight:600; }
+.gm.sel { border-color:#d8d8d8; }
+.tabs { position:sticky; top:48px; z-index:29; background:rgba(10,10,10,.94); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid var(--line); }
+.tabs .in { max-width:760px; margin:0 auto; display:flex; gap:.2rem; overflow-x:auto; padding:0 12px; scrollbar-width:none; }
+.tabs .in::-webkit-scrollbar { display:none; }
+.tabs a { flex:0 0 auto; min-height:40px; display:flex; align-items:center; padding:0 .65rem; color:var(--muted); font-size:.8rem; font-weight:600; border-bottom:2px solid transparent; }
+.tabs a.on { color:#fff; border-bottom-color:var(--gold); }
+section { scroll-margin-top:100px; }
+main { max-width:760px; margin:0 auto; padding:0 16px 3rem; }
+/* NFL team badges: team colours, abbreviation only */
+.tbg { display:inline-block; min-width:2.1rem; text-align:center; font-size:.62rem; font-weight:800; letter-spacing:.04em; border-radius:4px; padding:.06rem .3rem; line-height:1.35; vertical-align:.08rem; border:1px solid rgba(255,255,255,.16); }
+/* standings cards */
+.cards { display:flex; flex-direction:column; gap:.55rem; }
+.card { background:var(--card); border:1px solid #1d1d1d; border-radius:12px; overflow:hidden; }
+.card .hd { padding:.75rem .85rem .7rem; cursor:pointer; }
+.card .ch { display:grid; grid-template-columns:1.6rem 1fr auto; gap:.45rem; align-items:start; }
+.card .rk { color:var(--muted); font-weight:700; font-size:.95rem; line-height:1.4; }
+.card .tn b { color:#fff; font-weight:600; font-size:.98rem; }
+.card .tn b::after { content:" ▸"; color:var(--faint); font-size:.7rem; }
+.card.open .tn b::after { content:" ▾"; }
+.card .tn span { display:block; color:var(--faint); font-size:.74rem; }
+.card .tn span.fin { color:var(--muted); }
+.card .tn .strip { display:flex; gap:1px; width:7.2rem; margin-top:.35rem; }
+.card .nv { text-align:right; }
+.card .nv b { display:block; font-size:1.35rem; color:#fff; font-weight:700; line-height:1.15; border-radius:4px; }
+.card .nv small { color:var(--muted); font-size:.72rem; }
+.card .cs { display:grid; grid-template-columns:repeat(4, 1fr); gap:.4rem; margin:.6rem 0 0 2.05rem; }
+.card .cs div { font-size:.9rem; font-weight:600; color:var(--fg); }
+.card .cs i { display:block; font-style:normal; font-size:.58rem; text-transform:uppercase; letter-spacing:.08em; color:var(--faint); font-weight:600; }
+.card .detail { border-top:1px solid #1d1d1d; background:#0d0d0d; padding-bottom:.3rem; }
+/* skeletons, flashes */
+.sk { height:5.6rem; border-radius:12px; background:linear-gradient(90deg,#101010 0%,#171717 50%,#101010 100%); background-size:200% 100%; animation:sk 1.2s infinite linear; }
+@keyframes sk { to { background-position:-200% 0; } }
+.flash { animation:fl 1.4s ease-out; }
+tr.flash td { animation:fl 1.4s ease-out; }
+@keyframes fl { from { background-color:rgba(232,197,71,.22); } to { background-color:transparent; } }
+.pick td { background:rgba(255,255,255,.05) !important; }
+.chip.pick { border-color:#d8d8d8; }
+footer.app { margin-top:2.6rem; padding-top:1rem; border-top:1px solid var(--line); }
+
+.sub { color:var(--muted); font-size:.9rem; }
+.status { display:flex; flex-wrap:wrap; gap:.3rem .9rem; align-items:center; margin:.2rem 0 0; font-size:.76rem; color:var(--muted); }
+.dot { display:inline-block; width:.5rem; height:.5rem; border-radius:50%; background:var(--live); margin-right:.35rem; animation:pulse 1.6s infinite; }
+.dot.off { background:var(--faint); animation:none; }
+@keyframes pulse { 50% { opacity:.3; } }
+h2 { color:var(--gold); font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.14em; margin:2.4rem 0 .5rem; }
+.note { color:var(--faint); font-size:.74rem; margin:.5rem 0 0; }
+table { width:100%; border-collapse:collapse; font-size:.86rem; }
+th { font-size:.64rem; text-transform:uppercase; letter-spacing:.08em; color:var(--faint); font-weight:600; text-align:right; padding:.35rem .3rem; border-bottom:1px solid var(--line); }
+td { text-align:right; padding:.55rem .3rem; border-bottom:1px solid var(--line); white-space:nowrap; }
+th.l, td.l { text-align:left; }
+td.pos { color:var(--muted); font-weight:600; width:1.8rem; }
+td.name { white-space:normal; }
+td.name b { color:#fff; font-weight:500; }
+td.name span { color:var(--faint); font-size:.74rem; display:block; }
+td.big { color:#fff; font-weight:700; font-size:1rem; }
+td.dim, span.dim { color:var(--muted); }
+tr.first td.pos, tr.first td.big { color:var(--gold); }
+tr.team { cursor:pointer; }
+tr.team:hover td { background:#121212; }
+tr.team td.name b::after { content:" ▸"; color:var(--faint); font-size:.7rem; }
+tr.team.open td.name b::after { content:" ▾"; }
+tr.detail td { padding:0 0 .8rem; background:#0d0d0d; }
+.pl { width:100%; font-size:.8rem; }
+.pl td { border-bottom:1px solid #181818; padding:.32rem .3rem; }
+.pl td.slot { color:var(--faint); font-size:.68rem; width:2.6rem; text-align:left; padding-left:.6rem; }
+.pl tr.bench td { color:#6f6f6f; }
+.pl tr.bench td.slot { color:#3e3e3e; }
+.st { font-size:.7rem; color:var(--faint); }
+.st.live { color:var(--live); font-weight:600; }
+.bar { display:inline-block; height:.42rem; border-radius:2px; background:var(--gold); vertical-align:middle; margin-left:.3rem; opacity:.85; }
+.chart { width:100%; height:auto; display:block; }
+.chart .ln, .chart .lab { transition:opacity .15s; cursor:pointer; }
+.chart.hl .ln:not(.on), .chart.hl .lab:not(.on) { opacity:.12; }
+.chart .hit { stroke:transparent; stroke-width:12; fill:none; cursor:pointer; }
+.legend { display:flex; flex-wrap:wrap; gap:.3rem .9rem; font-size:.74rem; color:var(--muted); margin-top:.4rem; }
+.legend i { display:inline-block; width:.8rem; height:.18rem; border-radius:1px; margin-right:.3rem; vertical-align:middle; }
+.replay { background:var(--card); border:1px solid #262626; border-radius:10px; padding:.7rem .9rem; margin-top:1rem; font-size:.8rem; }
+.replay input { width:100%; accent-color:var(--gold); }
+.gts { margin:1rem 0 0; border:1px solid #2a2510; background:#100f09; border-radius:10px; padding:.7rem .9rem; display:flex; gap:.8rem; align-items:center; }
+.gts .k { font-size:.58rem; color:var(--gold); letter-spacing:.14em; text-transform:uppercase; font-weight:700; }
+.gts .t { color:#fff; font-size:.84rem; font-weight:600; }
+.gts .s { color:var(--muted); font-size:.72rem; }
+.gts .p { margin-left:auto; font-size:.74rem; font-weight:700; color:#0a0a0a; background:var(--gold); border-radius:4px; padding:.1rem .45rem; white-space:nowrap; }
+.err { color:var(--down); font-size:.85rem; margin-top:1rem; }
+td.name span.fin { color:var(--muted); }
+td.name span.strip { display:flex; gap:1px; width:6.6rem; margin-top:.3rem; }
+.strip i { flex:1; height:.32rem; background:#1c1c1c; border-radius:1px; }
+.tools { margin:0 0 .5rem; }
+.btn { background:var(--card); border:1px solid #2a2a2a; color:var(--fg); font:inherit; font-size:.76rem; padding:0 .85rem; min-height:40px; border-radius:8px; cursor:pointer; }
+.btn:hover { border-color:#3a3a3a; }
+.tsum { font-size:.74rem; color:var(--muted); padding:.6rem .6rem .2rem; white-space:normal; text-align:left; }
+.pl tr.grp td { font-size:.6rem; text-transform:uppercase; letter-spacing:.1em; color:var(--faint); font-weight:600; padding:.65rem .3rem .25rem; }
+.pl tr.grp td.gl { color:var(--gold); text-align:left; padding-left:.6rem; }
+.pl td.pn { white-space:normal; text-align:left; }
+.pl td.pn .st.s2 { display:block; }
+.pl td.rg { font-size:.7rem; color:var(--faint); }
+.wl td { vertical-align:top; }
+.wl td.gap { line-height:1.25; }
+.wl td.gap i { display:block; font-style:normal; font-size:.66rem; color:var(--faint); }
+.wl tr.cut td { border-bottom:1px solid #4a4a4a; }
+.wl tr.chips td { padding:0 .3rem .6rem 2.1rem; text-align:left; white-space:normal; border-bottom:1px solid var(--line); }
+.wl tr.team2 td { border-bottom:0; }
+.wl tr.chips.cut td { border-bottom:2px solid #555; }
+.chip { display:inline-block; font-size:.7rem; border:1px solid #2a2a2a; border-radius:5px; padding:.12rem .4rem; margin:.2rem .25rem 0 0; background:#141414; color:var(--muted); white-space:nowrap; }
+.chip.in { border-color:rgba(232,197,71,.45); background:rgba(232,197,71,.07); }
+.chip.pre { border-color:rgba(90,169,230,.45); background:rgba(90,169,230,.06); }
+.chip b { color:#fff; font-weight:600; }
+.gf { display:flex; flex-wrap:wrap; gap:.35rem; margin:0 0 .6rem; }
+.gf button { background:var(--card); border:1px solid #2a2a2a; color:var(--muted); font:inherit; font-size:.74rem; padding:0 .7rem; min-height:40px; border-radius:8px; cursor:pointer; }
+.gf button.on { color:var(--fg); border-color:#555; }
+.ot { font-size:.58rem; font-weight:600; color:#d6d6d6; border:1px solid #4a4a4a; border-radius:3px; padding:0 .25rem; margin-left:.3rem; vertical-align:.05rem; }
+.pl .sl { display:block; font-size:.66rem; color:#7a7a7a; line-height:1.3; margin-top:.05rem; }
+.pl tr.bench { opacity:.55; }
+.pl tr.s-in td { background:rgba(232,197,71,.07); }
+.pl tr.s-in td.slot { box-shadow:inset 3px 0 0 var(--live); }
+.pl tr.s-post td.slot { box-shadow:inset 3px 0 0 rgba(154,154,154,.5); }
+.pl tr.s-pre td.slot { box-shadow:inset 3px 0 0 rgba(90,169,230,.6); }
+.pl tr.s-in td.now { color:#fff; font-weight:700; }
+.pl tr.s-post td.now { color:var(--fg); }
+.pl tr.s-pre td.proj { color:#fff; font-weight:600; }
+.pl .st.done, .lg .c-post { color:var(--done); }
+.pl .st.up, .lg .c-pre { color:var(--soon); }
+.lg .c-in, .pl .st.s2.live { color:var(--live); }
+.lg { font-size:.68rem; padding:.15rem .6rem 0; display:flex; gap:.9rem; text-align:left; }
+.pd { display:inline-block; width:.42rem; height:.42rem; border-radius:50%; background:var(--live); margin-right:.3rem; vertical-align:.05rem; animation:pulse 1.6s infinite; }
+.hide-sm { }
+@media (max-width:520px) { .hide-sm { display:none; } td, th { padding-left:.2rem; padding-right:.2rem; } .top a.lk { display:none; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="in"><b>F1C Live</b><span class="wk" id="wk"></span>
+  <span class="pill"><span class="dot off" id="ldot"></span><span id="ago">Loading…</span></span>
+  <a class="lk" href="https://astukas12.github.io/f1c-report/">Weekly report</a></div></header>
+<div class="sb" id="sb" aria-label="This week's games"></div>
+<nav class="tabs" aria-label="Sections"><div class="in" id="tabs">
+  <a href="#standings" class="on">Standings</a><a href="#left">What's Left</a><a href="#standings" id="tabLineups">Lineups</a><a href="#charts">Charts</a><a href="#f1sec">F1</a>
+</div></nav>
+<main>
+  <div class="status" id="status"></div>
+  <div id="replay"></div>
+  <div id="err"></div>
+
+  <section id="standings">
+  <h2>Live Standings</h2>
+  <div class="tools"><button class="btn" id="toggle" type="button">Show all lineups</button></div>
+  <div class="cards" id="board"><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+  <p class="note">Tap a team for its lineup. The strip under each team shows its chance of each finish this week, 1st on the left. Player ranges run from a low (10th percentile) to a high (90th percentile) final. Projected and odds come from <span id="srcs">the sims</span>; players in games underway keep their points so far plus a sim of the time left, adjusted for how the game is going (players who have left the game or haven't touched the ball are cut, and usage so far tilts the rest).</p>
+  </section>
+
+  <section id="left">
+  <h2>What's Left</h2>
+  <div class="gf" id="gf"></div>
+  <table class="wl" id="games"><tr><td><div class="sk" style="height:12rem"></div></td></tr></table>
+  <p class="note">Gaps are points behind the current 1st, 3rd and 6th place scores, with each team's chance to finish there below.
+    For each player still to play: <b>needs</b> = points he must score from here before he adds anything to his team's best-ball lineup,
+    then the share of sims where he adds to it, and the points he adds on average. Tap a game above to see just its players.</p>
+  </section>
+
+  <section id="charts">
+  <h2>Win Odds This Week</h2>
+  <svg class="chart" id="chart" viewBox="0 0 720 260"></svg>
+  <div class="legend" id="legend"></div>
+  <p class="note" id="chartnote"></p>
+
+  <h2>Expected F1 Points This Week</h2>
+  <svg class="chart" id="chart2" viewBox="0 0 720 320"></svg>
+  <p class="note" id="chartnote2">Each team's average F1 points this week across the sims. Tap a line or name to pick out a team.</p>
+  </section>
+
+  <section id="f1sec">
+  <h2>Live F1 Standings</h2>
+  <table id="f1"></table>
+  <p class="note">F1 points coming into the week plus each team's expected F1 points this week from the sims.</p>
+  </section>
+
+  <footer class="app">
+  <p class="note">Once a game is final, its players show MFL's official score. Games in progress are scored from ESPN's game stats with league rules, so they can differ from MFL until the game ends.</p>
+  <p class="note"><a href="https://astukas12.github.io/f1c-report/">Weekly report</a> · <a href="https://astukas12.github.io/f1c-report/sims.html">Sim Center</a></p>
+  <div class="gts">
+    <div><div class="k">Sims by Golden Ticket Sims</div>
+      <div class="t">Sims for DraftKings contests</div>
+      <div class="s">NFL · CFB · NHL · MMA · NASCAR · F1 · Tennis · Golf · NBA · CBB</div></div>
+    <div class="p">$50/month</div>
+  </div>
+  </footer>
+</main>
+
+<script>
+"use strict";
+const ESPN = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/";
+const ESPN_TEAM = { WSH: "WAS", LAR: "LA" };
+const GAME_SEC = 3600, REAL_GAME_MS = 3.2 * 3600e3;
+const Q = new URLSearchParams(location.search);
+const REPLAY = Q.get("replay") === "1";
+let MODEL = Q.get("model") === "simple" ? "simple" : "smart";   // ?model=simple: points so far + pre-game sim x time left
+const NFLC = { ARI: ["#97233F", "#FFB612"], ATL: ["#A71930", "#A5ACAF"], BAL: ["#241773", "#9E7C0C"], BUF: ["#00338D", "#C60C30"],
+  CAR: ["#0085CA", "#101820"], CHI: ["#0B162A", "#C83803"], CIN: ["#FB4F14", "#000000"], CLE: ["#311D00", "#FF3C00"], DAL: ["#003594", "#869397"],
+  DEN: ["#FB4F14", "#002244"], DET: ["#0076B6", "#B0B7BC"], GB: ["#203731", "#FFB612"], HOU: ["#03202F", "#A71930"], IND: ["#002C5F", "#A2AAAD"],
+  JAX: ["#006778", "#D7A22A"], KC: ["#E31837", "#FFB81C"], LV: ["#000000", "#A5ACAF"], LAC: ["#0080C6", "#FFC20E"], LA: ["#003594", "#FFA300"],
+  MIA: ["#008E97", "#FC4C02"], MIN: ["#4F2683", "#FFC62F"], NE: ["#002244", "#C60C30"], NO: ["#D3BC8D", "#101820"], NYG: ["#0B2265", "#A71930"],
+  NYJ: ["#125740", "#FFFFFF"], PHI: ["#004C54", "#A5ACAF"], PIT: ["#FFB612", "#101820"], SF: ["#AA0000", "#B3995D"], SEA: ["#002244", "#69BE28"],
+  TB: ["#D50A0A", "#34302B"], TEN: ["#0C2340", "#4B92DB"], WAS: ["#5A1414", "#FFB612"] };
+function badge(t) {
+  const c = NFLC[t] || ["#2a2a2a", "#555"], n = parseInt(c[0].slice(1), 16);
+  const lum = (.2126 * (n >> 16) + .7152 * (n >> 8 & 255) + .0722 * (n & 255)) / 255;
+  return `<span class="tbg" style="background:${c[0]};color:${lum > .55 ? "#111" : "#fff"};box-shadow:inset 0 -2px 0 ${c[1]}">${esc(t)}</span>`;
+}
+const TEAM_COLORS = ["#E8C547", "#5aa9e6", "#4cc38a", "#c58af9", "#f08c3a", "#7dd3c0", "#e88fb0", "#a3b86c", "#8c9eff", "#d4a373", "#b0b6bd", "#ef8f7b"];
+const COLORS = ["#E8C547", "#4cc38a", "#5aa9e6", "#e5484d", "#c58af9", "#f08c3a"];
+
+let L, D;                  // week data, Int16 draws (tenths)
+let MFL = null;             // MFL's scores for players whose game is over (week-NN-mfl.json, published every 10 min)
+let TM = null, TMROW = {}; // GTS games: each team's simulated fantasy total per sim (tenths), team -> row
+let games = [];            // ESPN events: {id, away, home, kickoff, state, frac, label, ascore, hscore}
+let stats = {};            // espn athlete id -> {pts, team}
+let byNameTeam = {};       // "name|TEAM" -> espn id
+let finalBox = {};         // game id -> box parsed (finished games are fetched once)
+let replayData = null;     // replay: game id -> {espnId: final pts}
+let history = [];
+let replayFull = null;     // replay: every step, for the chart axis
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const key = s => String(s).toLowerCase().replace(/ (jr|sr|ii|iii|iv|v)\.?$/i, "").replace(/[^a-z ]/g, "").trim();
+const pct = x => x >= 99.5 ? "99%" : x <= 0 ? "–" : x < 1 ? "<1%" : Math.round(x) + "%";
+const f1 = x => x.toFixed(1);
+
+async function getJSON(u) { const r = await fetch(u, { cache: "no-store" }); if (!r.ok) throw new Error(u + " " + r.status); return r.json(); }
+
+// ---------- ESPN ----------
+function teamCode(a) { return ESPN_TEAM[a] || a; }
+
+async function loadScoreboard() {
+  const sb = await getJSON(`${ESPN}scoreboard?seasontype=2&week=${L.week}&dates=${L.season}`);
+  games = sb.events.map(e => {
+    const c = e.competitions[0], st = e.status;
+    const t = c.competitors.reduce((o, x) => (o[x.homeAway] = x, o), {});
+    const state = st.type.state;   // pre / in / post
+    let frac = state === "pre" ? 1 : state === "post" ? 0 :
+      st.period > 4 ? 0 : Math.max(0, ((4 - st.period) * 900 + (st.clock || 0)) / GAME_SEC);
+    return { id: e.id, away: teamCode(t.away.team.abbreviation), home: teamCode(t.home.team.abbreviation),
+             kickoff: new Date(e.date).getTime(), state, frac, label: st.type.shortDetail,
+             period: st.period, clock: st.displayClock, half: st.type.name === "STATUS_HALFTIME",
+             ascore: t.away.score, hscore: t.home.score };
+  }).sort((a, b) => a.kickoff - b.kickoff);
+}
+
+// League scoring: full PPR, pass yd .04, pass TD 4, INT -1, rush/rec yd .1, rush/rec/return TD 6, fumble lost -1,
+// two-point conversion 2 (passer and receiver, or runner). Yards floor at 0 per category (MFL ranges start at 0).
+// Fumble recovery TDs by offensive players aren't in ESPN's box score, so they aren't counted.
+const abbr = s => { const w = key(s).split(" "); return w.length > 1 ? w[0][0] + "." + w[w.length - 1] : w[0]; };
+function twoPointNames(sum) {
+  // successful two-point plays: "(Jordan Love Run for Two-Point Conversion)", "(A B Pass to C D for Two-Point Conversion)";
+  // failed ones read "(Two-Point Pass Conversion Failed)". Without scoringPlays, fall back to the play-by-play
+  // ("TWO-POINT CONVERSION ATTEMPT. J.Love rushes up the middle. ATTEMPT SUCCEEDS.").
+  const names = [], sp = sum.scoringPlays || [];
+  for (const p of sp) {
+    const m = /\(([^()]+?) (?:Pass to ([^()]+?)|Run) for Two-Point Conversion\)/i.exec(p.text || "");
+    if (m && !/fail|no good/i.test(m[0])) names.push(m[1], ...(m[2] ? [m[2]] : []));
+  }
+  if (!sp.length) for (const dr of (sum.drives && sum.drives.previous) || []) for (const p of dr.plays || []) {
+    const m = /TWO-POINT CONVERSION ATTEMPT\.(.*?)ATTEMPT SUCCEEDS/i.exec(p.text || "");
+    if (!m) continue;
+    const who = m[1].match(/\b[A-Z][a-z]?\.\s?[A-Z][A-Za-z'-]+/g) || [];
+    names.push(...who.slice(0, /\bpass\b/i.test(m[1]) ? 2 : 1));
+  }
+  return names;
+}
+function scoreBox(sum) {
+  const out = {};
+  for (const tp of (sum.boxscore && sum.boxscore.players) || []) {
+    const team = teamCode(tp.team.abbreviation);
+    for (const cat of tp.statistics || []) {
+      for (const a of cat.athletes || []) {
+        const id = a.athlete.id, v = {};
+        cat.keys.forEach((k, i) => v[k] = parseFloat(String(a.stats[i]).split("/")[0]) || 0);
+        const o = out[id] || (out[id] = { pts: 0, team, name: a.athlete.displayName, st: {} }), st = o.st;
+        switch (cat.name) {
+          case "passing":   o.pts += .04 * Math.max(0, v.passingYards) + 4 * v.passingTouchdowns - v.interceptions;
+            { const ca = String(a.stats[cat.keys.indexOf("completions/passingAttempts")] || "").split("/");
+              st.cmp = +ca[0] || 0; st.att = +ca[1] || 0; }
+            st.py = v.passingYards || 0; st.ptd = v.passingTouchdowns || 0; st.int = v.interceptions || 0; break;
+          case "rushing":   o.pts += .1 * Math.max(0, v.rushingYards) + 6 * v.rushingTouchdowns;
+            st.ra = v.rushingAttempts || 0; st.ry = v.rushingYards || 0; st.rtd = v.rushingTouchdowns || 0; break;
+          case "receiving": o.pts += v.receptions + .1 * Math.max(0, v.receivingYards) + 6 * v.receivingTouchdowns;
+            st.rec = v.receptions || 0; st.rcy = v.receivingYards || 0; st.rctd = v.receivingTouchdowns || 0; st.tgt = v.receivingTargets || 0; break;
+          case "fumbles":   o.pts -= v.fumblesLost; st.fl = v.fumblesLost || 0; break;
+          case "kickReturns": o.pts += 6 * (v.kickReturnTouchdowns || 0); break;
+          case "puntReturns": o.pts += 6 * (v.puntReturnTouchdowns || 0); break;
+        }
+      }
+    }
+  }
+  // two-point plays: match to this game's athletes by full name, else first initial + last name (skip if ambiguous)
+  const ents = Object.entries(out);
+  for (const nm of twoPointNames(sum)) {
+    let hit = ents.filter(([, o]) => key(o.name) === key(nm));
+    if (hit.length !== 1) hit = ents.filter(([, o]) => abbr(o.name) === abbr(nm.replace(/\.\s?/, ". ")));
+    if (hit.length === 1) { hit[0][1].pts += 2; hit[0][1].st.two = (hit[0][1].st.two || 0) + 1; } else console.warn("two-point: no unique match for", nm);
+  }
+  return out;
+}
+
+async function loadStats() {
+  // box scores for games under way (finished games once); the play-by-play comes in the same summary.
+  // Games kicking off within 3 hours: the summary for ESPN's injury report (Out / IR), every 10 minutes.
+  const t0 = Date.now();
+  const need = games.filter(g => (g.state !== "pre" && !(g.state === "post" && finalBox[g.id])) ||
+    (g.state === "pre" && g.kickoff - t0 < 3 * 3600e3 && !(g.injT && t0 - g.injT < 10 * 60e3)));
+  await Promise.all(need.map(async g => {
+    try {
+      const sum = await getJSON(`${ESPN}summary?event=${g.id}`);
+      g.inj = injuries(sum); g.injT = t0;
+      if (g.state === "pre") return;
+      const b = scoreBox(sum); g.pbp = parsePBP(sum, g);
+      if (g.state === "post") finalBox[g.id] = b; else g.box = b;
+    } catch (e) { console.warn(e); }
+  }));
+  stats = {};
+  for (const g of games) { Object.assign(stats, finalBox[g.id] || g.box || {}); g.ps = g.pbp ? pbpState(g, Infinity) : null; }
+}
+function injuries(sum) {   // ESPN's injury report for both teams: athlete id -> "Out", "Injured Reserve", "Questionable", ...
+  const o = {};
+  for (const t of sum.injuries || []) for (const i of t.injuries || []) if (i.athlete && i.athlete.id) o[i.athlete.id] = i.status;
+  return o;
+}
+
+// Replay: every game is final. The slider replays the day from ESPN's play-by-play (points, usage and injury notes as
+// they stood at that moment); finished games use the final box score.
+const clockSec = c => { const m = /^(\d+):(\d+)/.exec((c && c.displayValue) || ""); return m ? 60 * +m[1] + +m[2] : (c && c.value) || 0; };
+const mmss = x => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, "0")}`;
+async function loadReplay() {
+  await Promise.all(games.map(async g => {
+    const sum = await getJSON(`${ESPN}summary?event=${g.id}`);
+    finalBox[g.id] = scoreBox(sum); g.fa = g.ascore; g.fh = g.hscore; g.pbp = parsePBP(sum, g);
+    for (const [id, o] of Object.entries(finalBox[g.id])) TEAM_OF[id] = o.team;
+  }));
+}
+function replayAt(T) {
+  stats = {};
+  for (const g of games) {
+    const p = Math.min(1, Math.max(0, (T - g.kickoff) / REAL_GAME_MS));
+    g.frac = 1 - p; g.state = p === 0 ? "pre" : p === 1 ? "post" : "in";
+    const el = p * GAME_SEC, q = Math.min(4, 1 + Math.floor(el / 900));
+    g.period = q; g.clock = mmss(Math.max(0, q * 900 - el)); g.half = false;
+    g.ps = pbpState(g, p === 1 ? Infinity : el);
+    if (g.state === "post") { g.ascore = g.fa; g.hscore = g.fh; } else { g.ascore = g.ps.a; g.hscore = g.ps.h; }
+    g.hideScore = false;
+    g.label = g.state === "pre" ? fmtKick(g.kickoff) : g.state === "post" ? "Final" : `Q${q} ${g.clock}`;
+    if (g.state === "post") Object.assign(stats, finalBox[g.id] || {});
+  }
+}
+
+// ---------- play-by-play ----------
+// Each play becomes stat changes for the players named in it ("J.Allen pass short right to K.Coleman ... for 8 yards"),
+// keyed by offense + first initial and last name; plus "X was injured" / "X has returned" notes.
+const NM = "[A-Z][A-Za-z']*\\.\\s?(?:St\\. |Van |Le |De |Mc)?[A-Z][A-Za-z'-]+(?: (?:Jr|Sr|II|III|IV)\\b\\.?)?";
+const RE_PASS = new RegExp(`(${NM}) pass\\b`), RE_TGT = new RegExp(`(?:\\bto|intended for) (${NM})`);
+const RE_SNAP = new RegExp(`^Direct snap to ${NM}\\.\\s*`);
+const RE_SACK = new RegExp(`(${NM}) sacked`), RE_RUSH = new RegExp(`^(${NM}) (?!pass\\b|sacked\\b|spiked\\b)`);
+const RE_INJ = new RegExp(`(?:\\b([A-Z]{2,3})-)?(${NM}) was injured`, "g"), RE_RET = new RegExp(`(?:\\b([A-Z]{2,3})-)?(${NM}) has returned`, "g");
+const OFF_TYPES = /^(Rush|Rushing Touchdown|Pass Reception|Passing Touchdown|Pass Incompletion|Pass Interception Return|Interception Return Touchdown|Sack|Sack Opp Fumble Recovery|Fumble Recovery \(Own\)|Fumble Recovery \(Opponent\)|Safety)$/;
+const PFX = { BLT: "BAL", CLV: "CLE", HST: "HOU", ARZ: "ARI", SL: "LA", LAR: "LA", WSH: "WAS", JAC: "JAX" };
+const nmKey = x => { const m = /^([A-Z])[A-Za-z']*\.\s?(.*)$/.exec(x.trim()); return m ? (m[1] + m[2].replace(/ (Jr|Sr|II|III|IV)\.?$/, "")).toLowerCase().replace(/[^a-z]/g, "") : ""; };
+const plKey = name => { const w = name.replace(/\s+(Jr\.?|Sr\.?|II|III|IV|V)$/i, "").trim().split(/\s+/); return (w[0][0] + w.slice(1).join("")).toLowerCase().replace(/[^a-z]/g, ""); };
+function parsePBP(sum, g) {
+  const dr = (sum.drives && sum.drives.previous) || [], cur = sum.drives && sum.drives.current;
+  const seen = new Set(), ev = [];
+  const tm = x => { const t = x && (PFX[x] || teamCode(x)); return t === g.away || t === g.home ? t : null; };
+  for (const d of cur ? [...dr, cur] : dr) {
+    const off = teamCode((d.team && d.team.abbreviation) || "");
+    for (const p of d.plays || []) {
+      if (seen.has(p.id)) continue; seen.add(p.id);
+      const per = (p.period && p.period.number) || 1, type = (p.type && p.type.text) || "";
+      let tx = p.text || "";
+      const e = { t: (per - 1) * 900 + 900 - clockSec(p.clock), off, a: p.awayScore, h: p.homeScore, dl: [], inv: [], inj: [], ret: [], offPlay: false };
+      for (const m of tx.matchAll(RE_INJ)) e.inj.push([tm(m[1]), nmKey(m[2])]);
+      for (const m of tx.matchAll(RE_RET)) e.ret.push([tm(m[1]), nmKey(m[2])]);
+      const tp = /TWO-POINT CONVERSION ATTEMPT\.(.*?)ATTEMPT (SUCCEEDS|FAILS)/i.exec(tx);
+      if (tp) {
+        tx = tx.slice(0, tp.index);
+        if (/SUCCEEDS/i.test(tp[2])) for (const w of (tp[1].match(new RegExp(NM, "g")) || []).slice(0, /\bpass\b/i.test(tp[1]) ? 2 : 1)) e.dl.push([nmKey(w), "two", 1]);
+      }
+      e.offPlay = OFF_TYPES.test(type) && !/\bNo Play\b|NULLIFIED/i.test(tx);
+      if (e.offPlay) {
+        let body = tx.trim(), b0;
+        do { b0 = body; body = body.replace(/^\([^)]*\)\s*/, "").replace(/^.*?reported in as eligible\.\s*/, "").replace(RE_SNAP, "").trim(); } while (body !== b0);
+        // yards from the text ("for 9 yards", "for no gain"): ESPN's statYardage also counts penalty yards
+        const ym = /(?:^|\W)for (-?\d+) yards?(?:\W|$)|(?:^|\W)for no gain/.exec(body);
+        const yds = ym ? +(ym[1] || 0) : p.statYardage || 0, td = /^(Passing|Rushing) Touchdown$/.test(type) || (/^(Pass Reception|Rush)$/.test(type) && /\bTOUCHDOWN\b/.test(tx));
+        let m, carrier = null;
+        if ((m = RE_PASS.exec(body))) {
+          const qb = nmKey(m[1]), t = RE_TGT.exec(body.slice(m.index + m[0].length)), wr = t && nmKey(t[1]);
+          const comp = wr && (/^(Pass Reception|Passing Touchdown)$/.test(type) || (/^Fumble/.test(type) && !/incomplete/i.test(body)));
+          e.dl.push([qb, "att", 1]); e.inv.push(qb);
+          if (wr) { e.dl.push([wr, "tgt", 1]); e.inv.push(wr); }
+          if (comp) { e.dl.push([qb, "cmp", 1], [qb, "py", yds], [wr, "rec", 1], [wr, "rcy", yds]); if (td) e.dl.push([qb, "ptd", 1], [wr, "rctd", 1]); carrier = wr; }
+          if (/INTERCEPT/i.test(tx)) e.dl.push([qb, "int", 1]);
+        } else if ((m = RE_SACK.exec(body))) { const qb = nmKey(m[1]); e.inv.push(qb); e.dl.push([qb, "sk", 1]); carrier = qb; }
+        else if ((m = RE_RUSH.exec(body))) { const rb = nmKey(m[1]); e.inv.push(rb); e.dl.push([rb, "ra", 1], [rb, "ry", yds]); if (td) e.dl.push([rb, "rtd", 1]); carrier = rb; }
+        if (carrier && /^(Fumble Recovery \(Opponent\)|Sack Opp Fumble Recovery)$/.test(type)) e.dl.push([carrier, "fl", 1]);
+      }
+      ev.push(e);
+    }
+  }
+  return ev;
+}
+const pbpPts = s => .04 * Math.max(0, s.py || 0) + 4 * (s.ptd || 0) - (s.int || 0) + .1 * Math.max(0, s.ry || 0) + 6 * (s.rtd || 0) +
+  (s.rec || 0) + .1 * Math.max(0, s.rcy || 0) + 6 * (s.rctd || 0) - (s.fl || 0) + 2 * (s.two || 0);
+function pbpState(g, elSec) {   // the game up to elSec game-seconds in
+  const pl = {}, plays = {}, team = {}; let a = 0, h = 0;
+  const get = (off, k) => pl[off + "|" + k] || (pl[off + "|" + k] = { st: {}, inv: 0, hurt: false, hurtAt: 0 });
+  for (const e of g.pbp || []) {
+    if (e.t > elSec) break;
+    if (e.a != null) { a = e.a; h = e.h; }
+    if (e.offPlay) plays[e.off] = (plays[e.off] || 0) + 1;
+    for (const [k, f, v] of e.dl) { const o = get(e.off, k); o.st[f] = (o.st[f] || 0) + v; }
+    for (const k of e.inv) { const o = get(e.off, k); o.inv++; o.hurt = false; }
+    for (const [t, k] of e.inj) for (const off of t ? [t] : [g.away, g.home]) if (t || pl[off + "|" + k]) { const o = get(off, k); o.hurt = true; o.hurtAt = plays[off] || 0; }
+    for (const [t, k] of e.ret) for (const off of t ? [t] : [g.away, g.home]) { const o = pl[off + "|" + k]; if (o) o.hurt = false; }
+  }
+  for (const [kk, o] of Object.entries(pl)) {
+    const s = o.st, off = kk.split("|")[0];
+    o.pts = pbpPts(s); o.opps = (s.tgt || 0) + (s.ra || 0) + (s.att || 0) + (s.sk || 0);
+    team[off] = (team[off] || 0) + o.pts;
+  }
+  return { pl, plays, team, a, h };
+}
+
+// ---------- players ----------
+let GBT = {}, TEAM_OF = {};   // team -> game; replay: ESPN athlete id -> the team he played for
+function attachGames() {
+  const gByTeam = GBT = {};
+  for (const g of games) { gByTeam[g.away] = g; gByTeam[g.home] = g; }
+  for (const p of L.players) p.game = gByTeam[p.nfl] || null;
+  const best = {};
+  for (const p of L.players) { const k = p.nfl + "|" + plKey(p.name); if (!best[k] || p.proj > best[k].proj) best[k] = p; }
+  for (const p of L.players) p.pkeyLost = best[p.nfl + "|" + plKey(p.name)] !== p;
+}
+function playerNow(p) {
+  // points so far, share of game left, and (smart model) a multiplier on the time left with the reason for it
+  let s = p.espn && stats[p.espn];
+  if (!s) { const id = byNameTeam[key(p.name) + "|" + p.nfl]; s = id && stats[id]; }
+  const tm = (s && s.team) || (p.espn && TEAM_OF[p.espn]) || p.nfl, g = (tm !== p.nfl && GBT[tm]) || p.game;
+  if (!g) return { pts: 0, frac: 0, state: "bye", m: 1, tag: "" };
+  const u = g.ps && !p.pkeyLost && g.ps.pl[tm + "|" + plKey(s ? s.name : p.name)];
+  const n = { pts: s ? s.pts : 0, frac: g.frac, state: g.state, st: s && s.st, u, m: 1, tag: "", g, tm };
+  if ((REPLAY || HIST) && g.state === "in") { n.pts = u ? u.pts : 0; n.st = u ? u.st : null; }
+  if (!REPLAY && g.state === "post" && MFL && MFL.players && MFL.players[p.id] != null) { n.espnPts = n.pts; n.pts = +MFL.players[p.id]; n.mfl = true; }
+  if (MODEL === "smart") adjust(p, n, s, g);
+  return n;
+}
+// Opportunities per projected point (QB dropbacks + carries; RB carries + targets; WR/TE targets + carries),
+// fit on week 9 (rostered players projected over 3 points)
+const KOPP = { QB: 2.1, RB: 1.3, WR: .57, TE: .56 };
+// Tested on weeks 8 and 9 (every game stopped at 25/50/75% and compared with the finals): the sqrt spread, A and B
+// help; matching sims to the game so far (kc, team totals kd) cut player error a little but made team totals worse
+// early in both weeks, so it is off unless the page is opened with ?match=1.
+const CFG = Q.get("match") === "1" ? { kc: 4, cc: 6, kd: 3, cd: 8, wb: .5, sqrtv: true } : { kc: 0, cc: 6, kd: 0, cd: 8, wb: .5, sqrtv: true };
+function adjust(p, n, s, g) {
+  const el = 1 - n.frac, u = n.u, box = (s && s.st) || {};
+  const listedOut = !REPLAY && /^(Out|Injured Reserve)$/i.test((g.inj && p.espn && g.inj[p.espn]) || "");
+  const opps = Math.max(u ? u.opps : 0, (box.tgt || 0) + (box.ra || 0) + (p.pos === "QB" ? box.att || 0 : 0));
+  n.opps = opps;
+  if (n.state === "pre") { if (listedOut) { n.m = 0; n.tag = "Out"; n.why = "ESPN injury report: out"; } return; }
+  if (n.state !== "in") return;
+  // A: out of the game
+  if (listedOut && !opps) { n.m = 0; n.tag = "Out"; n.why = "ESPN injury report: out"; return; }
+  // (weeks 8-9: players hurt and not back for 25+ plays never returned; one came back after 17. Players with no
+  // touches at halftime scored about their projection after it, so that only trims late in the game.)
+  if (u && u.hurt) {
+    const since = ((g.ps && g.ps.plays[n.tm]) || 0) - u.hurtAt;
+    if (since >= 25) { n.m = 0; n.tag = "Out?"; n.why = `injured, not back for ${since} plays`; }
+    else if (since >= 8) { n.m = .3; n.tag = "Hurt"; n.why = `injured, not back for ${since} plays`; }
+    else { n.m = .7; n.tag = "Hurt"; n.why = "injured on a recent play"; }
+    return;
+  }
+  if (!opps && el >= .75 && p.proj > 4) { n.m = .5; n.tag = "No touches"; n.why = "no touches or targets through three quarters"; return; }
+  // B: usage pace so far vs what his projection implies, trusted more as the game goes on (less in GTS games,
+  // where matching the sims to the game already does part of this)
+  const exp = (KOPP[p.pos] || 0) * p.proj * el;
+  if (exp >= 2 && el >= .1) {
+    const w = CFG.wb * (p.src === "gts" ? .5 : 1) * el;
+    n.pace = opps / exp; n.m = 1 + w * (Math.min(2, Math.max(.4, n.pace)) - 1);
+  }
+}
+function indexNames() {
+  byNameTeam = {};
+  for (const [id, o] of Object.entries(stats)) byNameTeam[key(o.name) + "|" + o.team] = id;
+}
+
+// ---------- sims ----------
+// Best ball: QB1 RB2 WR3 TE1 + 2 FLEX (RB/WR/TE). Keep the top values per position, then fill.
+function bestBall(vals, pos) {
+  const top = { QB: [], RB: [], WR: [], TE: [] }, cap = { QB: 1, RB: 4, WR: 5, TE: 3 };
+  for (let i = 0; i < vals.length; i++) {
+    const a = top[pos[i]]; if (!a) continue;
+    const v = vals[i];
+    if (a.length < cap[pos[i]]) { a.push(v); a.sort((x, y) => y - x); }
+    else if (v > a[a.length - 1]) { a[a.length - 1] = v; a.sort((x, y) => y - x); }
+  }
+  const s = (a, n) => a.slice(0, n).reduce((x, y) => x + y, 0);
+  const flex = [...top.RB.slice(2), ...top.WR.slice(3), ...top.TE.slice(1)].sort((x, y) => y - x);
+  return s(top.QB, 1) + s(top.RB, 2) + s(top.WR, 3) + s(top.TE, 1) + s(flex, 2);
+}
+function lineupNow(ps, vals) {
+  // which players fill the best-ball lineup on current points (ties go to the higher projection)
+  const idx = ps.map((p, i) => i).sort((a, b) => vals[b] - vals[a] || ps[b].proj - ps[a].proj);
+  const need = { QB: 1, RB: 2, WR: 3, TE: 1 }, slot = new Array(ps.length).fill(null);
+  for (const i of idx) if (need[ps[i].pos] > 0) { need[ps[i].pos]--; slot[i] = ps[i].pos; }
+  let fl = 2;
+  for (const i of idx) if (!slot[i] && fl > 0 && ["RB", "WR", "TE"].includes(ps[i].pos)) { fl--; slot[i] = "FLEX"; }
+  return slot;
+}
+
+function seeded(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function teamSoFar(g, team) {   // the real team's fantasy points so far (every player, rostered or not)
+  if (REPLAY && g.state === "in") return (g.ps && g.ps.team[team]) || 0;
+  let x = 0; for (const o of Object.values(g.box || finalBox[g.id] || {})) if (o.team === team) x += o.pts;
+  return x;
+}
+// C + D: in a GTS game under way, weight each sim by how well its first part (each rostered player's points x share
+// of the game played, and both teams' fantasy totals) matches the game so far, then resample whole sims for the rest
+// of the game so teammates move together. Weights are tempered if they lean on too few sims.
+function gameIndex(g, N, NR, gps) {
+  const el = 1 - g.frac, lw = new Float64Array(N);
+  const add = (x, base, M, k, c) => { for (let s = 0; s < N; s++) { const e = M[base + s] / 10 * el, sd = k * Math.sqrt(e) + c, z = (x - e) / sd; lw[s] += -.5 * z * z - Math.log(sd); } };
+  if (CFG.kc) for (const [p, n] of gps) add(n.pts, p.row * NR, D, CFG.kc, CFG.cc);
+  if (CFG.kd) for (const t of [g.away, g.home]) if (TM && TMROW[t] != null) add(teamSoFar(g, t), TMROW[t] * NR, TM, CFG.kd, CFG.cd);
+  let mx = -Infinity; for (let s = 0; s < N; s++) if (lw[s] > mx) mx = lw[s];
+  const w = new Float64Array(N), target = Math.min(300, .3 * N);
+  const ess = tau => { let a = 0, b = 0; for (let s = 0; s < N; s++) { const v = Math.exp(tau * (lw[s] - mx)); w[s] = v; a += v; b += v * v; } return a * a / b; };
+  let tau = 1, E = ess(1);
+  if (E < target) { let lo = 0, hi = 1; for (let k = 0; k < 18; k++) { const mid = (lo + hi) / 2; if (ess(mid) < target) hi = mid; else lo = mid; } tau = lo; E = ess(tau); }
+  g.ess = Math.round(E); g.tau = +tau.toFixed(3);
+  let tot = 0; for (let s = 0; s < N; s++) tot += w[s];
+  const rnd = seeded(+g.id || 7), idx = new Int32Array(N), step = tot / N, u0 = rnd() * step;
+  for (let s = 0, j = 0, c = w[0]; s < N; s++) { const u = u0 + s * step; while (c < u && j < N - 1) c += w[++j]; idx[s] = j; }
+  for (let s = N - 1; s > 0; s--) { const k = Math.floor(rnd() * (s + 1)), t = idx[s]; idx[s] = idx[k]; idx[k] = t; }
+  return idx;
+}
+
+function runSims(withGames, nUse) {
+  // nUse: sims to run (the first nUse draws of each player's N-long row); the board uses all of them
+  const NR = L.nsim, N = Math.min(nUse || NR, NR), T = L.teams, nT = T.length;
+  const teamPs = T.map(t => L.players.filter(p => p.fid === t.id));
+  const now = teamPs.map(ps => ps.map(playerNow));
+  const nowOf = new Map(); teamPs.forEach((ps, t) => ps.forEach((p, i) => nowOf.set(p, now[t][i])));
+  const gidx = new Map();
+  if (MODEL === "smart") for (const g of games) {
+    if (g.state !== "in" || g.frac > .97) continue;
+    const gps = L.players.filter(p => p.src === "gts" && p.row != null && nowOf.has(p) && nowOf.get(p).g === g).map(p => [p, nowOf.get(p)]);
+    if (gps.length && (CFG.kc || CFG.kd)) gidx.set(g, gameIndex(g, N, NR, gps));
+  }
+  // each player's points still to come, per sim
+  const REM = teamPs.map((ps, t) => ps.map((p, i) => {
+    const n = now[t][i], R = new Float32Array(N), f = n.state === "bye" ? 1 : n.frac * n.m;
+    if (p.row == null || f === 0) return R;
+    const base = p.row * NR, idx = p.src === "gts" && n.g ? gidx.get(n.g) : null;
+    for (let s = 0; s < N; s++) R[s] = D[base + (idx ? idx[s] : s)] / 10;
+    if (MODEL === "smart" && CFG.sqrtv && n.state === "in") {
+      const fr = n.frac; let dm = 0; for (let s = 0; s < N; s++) dm += R[s]; dm /= N;
+      const a = Math.sqrt(fr);
+      for (let s = 0; s < N; s++) R[s] = n.m * Math.max(0, fr * dm + a * (R[s] - dm));
+    } else for (let s = 0; s < N; s++) R[s] *= f;
+    return R;
+  }));
+  const scores = T.map(() => new Float32Array(N));
+  for (let t = 0; t < nT; t++) {
+    const ps = teamPs[t], pos = ps.map(p => p.pos), v = new Float32Array(ps.length);
+    // players still to come (What's Left): how often their remaining play raises the team total, and by how much
+    const left = withGames ? ps.map((p, i) => i).filter(i => { const n = now[t][i]; return (n.state === "pre" || n.state === "in") && ps[i].row != null && ps[i].proj > 0 && n.m > 0; }) : [];
+    const cnt = new Float64Array(ps.length), add = new Float64Array(ps.length);
+    for (let s = 0; s < N; s++) {
+      for (let i = 0; i < ps.length; i++) v[i] = now[t][i].pts + REM[t][i][s];
+      const bb = scores[t][s] = bestBall(v, pos);
+      for (const i of left) { const keep = v[i]; v[i] = now[t][i].pts; const d = bb - bestBall(v, pos); v[i] = keep; if (d > 1e-6) { cnt[i]++; add[i] += d; } }
+    }
+    for (const i of left) { now[t][i].left = true; now[t][i].cnt = cnt[i] / N; now[t][i].add = add[i] / N; }
+  }
+  if (withGames) teamPs.forEach((ps, t) => ps.forEach((p, i) => {   // each player's final: mean and 10th-90th percentile
+    const n = now[t][i], R = REM[t][i]; let sm = 0; for (let s = 0; s < N; s++) sm += R[s];
+    const srt = Float32Array.from(R).sort(); n.mu = n.pts + sm / N; n.lo = n.pts + srt[Math.floor(.1 * (N - 1))]; n.hi = n.pts + srt[Math.floor(.9 * (N - 1))];
+  }));
+  const win = new Float64Array(nT), top3 = new Float64Array(nT), top6 = new Float64Array(nT), ef1 = new Float64Array(nT), mean = new Float64Array(nT);
+  const rankOf = new Uint8Array(nT * N), rk = new Float64Array(nT * nT);
+  const ord = [...Array(nT).keys()];
+  for (let s = 0; s < N; s++) {
+    ord.sort((a, b) => scores[b][s] - scores[a][s]);
+    ord.forEach((t, r) => {
+      rankOf[t * N + s] = r; rk[t * nT + r]++;
+      if (r === 0) win[t]++; if (r < 3) top3[t]++; if (r < 6) top6[t]++;
+      ef1[t] += L.f1[r] || 0; mean[t] += scores[t][s];
+    });
+  }
+  const res = T.map((t, i) => {
+    const vals = now[i].map(n => n.pts);
+    const srt = Float32Array.from(scores[i]).sort(), cnt = rk.subarray(i * nT, (i + 1) * nT);
+    let c = 0, r10 = -1, r90 = -1, mode = 0;
+    for (let r = 0; r < nT; r++) { c += cnt[r]; if (r10 < 0 && c >= .1 * N) r10 = r; if (r90 < 0 && c >= .9 * N) r90 = r; if (cnt[r] > cnt[mode]) mode = r; }
+    return { rk: Array.from(cnt, x => x / N), mode, r10, r90, lo: srt[Math.floor(.1 * (N - 1))], hi: srt[Math.floor(.9 * (N - 1))], team: t, ps: teamPs[i], now: now[i], slot: lineupNow(teamPs[i], vals), cur: bestBall(vals, teamPs[i].map(p => p.pos)),
+             mean: mean[i] / N, win: 100 * win[i] / N, top3: 100 * top3[i] / N, top6: 100 * top6[i] / N, ef1: ef1[i] / N,
+             left: now[i].filter((n, j) => n.state === "pre" && teamPs[i][j].proj > 0).length,
+             playing: now[i].filter((n, j) => n.state === "in" && teamPs[i][j].proj > 0).length };
+  });
+  return res;
+}
+
+// ---------- render ----------
+const fmtKick = t => new Date(t).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+const ordn = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th"));
+function teamScore(g, team) {   // "BUF 17-10": the player's team first
+  if (g.hideScore || g.ascore == null) return "";
+  const home = team === g.home;
+  return ` · ${team} ${home ? g.hscore : g.ascore}-${home ? g.ascore : g.hscore}`;
+}
+const gameClock = g => g.half ? "Half" : g.period > 4 ? `OT ${g.clock || ""}` : `Q${g.period} ${g.clock || ""}`;
+function stLabel(n, p) {
+  if (n.state === "bye") return '<span class="st s2">Bye</span>';
+  const g = n.g || p.game;
+  if (n.state === "pre") return `<span class="st s2 up">To play · ${esc(fmtKick(g.kickoff))}</span>`;
+  if (n.state === "post") return `<span class="st s2 done">Final${esc(teamScore(g, n.tm || p.nfl))}</span>`;
+  return `<span class="st s2 live"><i class="pd"></i>Playing · ${esc(gameClock(g).trim())}${esc(teamScore(g, n.tm || p.nfl))}</span>`;
+}
+function statLine(pos, st) {
+  if (!st) return "";
+  const td = n => n ? `, ${n} TD` : "";
+  const pass = st.att ? `${st.cmp}/${st.att}, ${st.py} yds${td(st.ptd)}${st.int ? `, ${st.int} INT` : ""}` : "";
+  const rush = l => st.ra ? `${st.ra}-${st.ry}${l ? " rush" : ""}${td(st.rtd)}` : "";
+  const rec = l => st.rec || st.tgt ? `${st.rec || 0}-${st.rcy || 0}${l ? " rec" : ""}${td(st.rctd)}${st.tgt ? ` (${st.tgt} tgt)` : ""}` : "";
+  const parts = pos === "QB" ? [pass, rush(true), rec(true)] : pos === "RB" ? [rush(false), rec(true)] : [rec(false), rush(true)];
+  if (st.two) parts.push(st.two > 1 ? `${st.two} 2PT` : "2PT");
+  if (st.fl) parts.push(`${st.fl} FL`);
+  const t = parts.filter(Boolean).join(" · ");
+  return t ? `<span class="sl">${esc(t)}</span>` : "";
+}
+const allFinal = r => r.now.every(n => n.state !== "pre" && n.state !== "in");
+function rankStrip(r) {
+  const mx = Math.max(...r.rk, 1e-9);
+  return '<span class="strip">' + r.rk.map((x, k) => `<i title="${ordn(k + 1)}: ${pct(100 * x)}"${x > 0 ? ` style="background:rgba(232,197,71,${(.12 + .88 * x / mx).toFixed(2)})"` : ""}></i>`).join("") + "</span>";
+}
+function syncToggle() { $("toggle").textContent = openTeams.size >= L.teams.length ? "Hide lineups" : "Show all lineups"; }
+let openTeams = new Set();
+
+function render(res) {
+  const sorted = [...res].sort((a, b) => b.ef1 - a.ef1 || b.win - a.win || b.mean - a.mean);   // ranked by expected F1 points
+  let h = "";
+  sorted.forEach((r, k) => {
+    const t = r.team, open = openTeams.has(t.id);
+    const left = r.playing || r.left ? `${r.playing ? r.playing + " playing · " : ""}${r.left} to play` : "done";
+    h += `<div class="card${open ? " open" : ""}" data-id="${esc(t.id)}"><div class="hd">
+      <div class="ch"><div class="rk">${k + 1}</div>
+        <div class="tn"><b>${esc(t.name)}</b><span>${esc(t.franchise)} · ${left}</span>
+          ${allFinal(r) ? `<span class="fin">Final: ${ordn(r.mode + 1)}</span>` :
+            `<span class="fin">Likely finish ${ordn(r.mode + 1)} · range ${ordn(r.r10 + 1)}–${ordn(r.r90 + 1)}</span>${rankStrip(r)}`}</div>
+        <div class="nv"><b data-k="t${esc(t.id)}" data-v="${r.cur.toFixed(1)}">${f1(r.cur)}</b><small>Proj ${f1(r.mean)}</small></div></div>
+      <div class="cs"><div><i>Win</i>${pct(r.win)}</div><div><i>Top 3</i>${pct(r.top3)}</div><div><i>Top 6</i>${pct(r.top6)}</div><div><i>Exp F1</i>${r.ef1.toFixed(1)}</div></div>
+    </div>${open ? `<div class="detail">${playersTable(r)}</div>` : ""}</div>`;
+  });
+  $("board").innerHTML = h; syncToggle();
+  document.querySelectorAll(".card .hd").forEach(hd => hd.onclick = () => {
+    const id = hd.parentNode.dataset.id; openTeams.has(id) ? openTeams.delete(id) : openTeams.add(id); render(LAST);
+  });
+  renderScoreboard();
+
+  renderLeft(res);
+
+  // Live F1 standings: points coming into the week + expected F1 points this week
+  const rows = res.map(r => ({ r, before: r.team.f1 || 0, exp: r.ef1 })).sort((a, b) => (b.before + b.exp) - (a.before + a.exp));
+  let fh = `<tr><th></th><th class="l">Team</th><th>Before</th><th>This week</th><th>Total</th></tr>`;
+  rows.forEach((x, k) => {
+    fh += `<tr><td class="pos">${k + 1}</td><td class="l name"><b>${esc(x.r.team.name)}</b></td>
+      <td class="dim">${x.before}</td><td>+${x.exp.toFixed(1)}</td><td class="big">${(x.before + x.exp).toFixed(1)}</td></tr>`;
+  });
+  $("f1").innerHTML = fh;
+
+  renderChart(res);
+  markPicked(); animateNums(document);
+}
+
+// ---------- scoreboard strip ----------
+let sbScrolled = false;
+function renderScoreboard() {
+  const sc = (g, side) => g.state === "pre" ? "" : (side === "a" ? g.ascore : g.hscore);
+  $("sb").innerHTML = games.map(g => `<button class="gm ${g.state}${wlGame === g.id ? " sel" : ""}" data-g="${esc(g.id)}" type="button">
+    <div class="gr">${badge(g.away)}<b>${esc(sc(g, "a"))}</b></div><div class="gr">${badge(g.home)}<b>${esc(sc(g, "h"))}</b></div>
+    <div class="gs">${esc(g.state === "post" ? "Final" : g.state === "in" ? gameClock(g).trim() : gameTag(g))}</div></button>`).join("");
+  $("sb").querySelectorAll(".gm").forEach(b => b.onclick = () => {
+    wlGame = wlGame === b.dataset.g ? "all" : b.dataset.g;
+    renderScoreboard(); renderLeft(LAST); markPicked();
+    if (wlGame !== "all") $("left").scrollIntoView();
+  });
+  if (!sbScrolled) {   // start the strip at the first game not yet final
+    const first = $("sb").querySelector(".gm.in, .gm.pre"); if (first) $("sb").scrollLeft = first.offsetLeft - 16;
+    sbScrolled = true;
+  }
+}
+function markPicked() {   // a game picked on the scoreboard: its players stand out in the lineups and What's Left
+  document.querySelectorAll(".pick").forEach(e => e.classList.remove("pick"));
+  if (wlGame !== "all") document.querySelectorAll(`[data-g="${CSS.escape(wlGame)}"]`).forEach(e => { if (!e.classList.contains("gm")) e.classList.add("pick"); });
+}
+
+// ---------- number transitions: a changed score counts up and flashes ----------
+const PREV = {};
+function animateNums(root) {
+  root.querySelectorAll("[data-k]").forEach(el => {
+    const k = el.dataset.k, v = +el.dataset.v, d = +(el.dataset.d || 1), p = PREV[k]; PREV[k] = v;
+    if (REPLAY || p == null || Math.abs(p - v) < .05 || isNaN(v)) return;
+    const t0 = performance.now(), run = now => { const f = Math.min(1, (now - t0) / 700), e = 1 - (1 - f) ** 3;
+      el.textContent = (p + (v - p) * e).toFixed(d); if (f < 1) requestAnimationFrame(run); };
+    requestAnimationFrame(run);
+    const host = el.dataset.flash === "row" ? el.closest("tr") : el;
+    host.classList.remove("flash"); void host.offsetWidth; host.classList.add("flash");
+  });
+}
+
+// ---------- section tabs follow the scroll ----------
+function setupTabs() {
+  const tabs = [...document.querySelectorAll("#tabs a")];
+  $("tabLineups").onclick = ev => { ev.preventDefault(); L.teams.forEach(t => openTeams.add(t.id)); if (LAST) render(LAST); $("standings").scrollIntoView(); };
+  const secs = ["standings", "left", "charts", "f1sec"].map(id => $(id));
+  const on = () => {
+    let cur = secs[0]; for (const sct of secs) if (sct.getBoundingClientRect().top < 140) cur = sct;
+    tabs.forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + cur.id && a.id !== "tabLineups"));
+  };
+  addEventListener("scroll", on, { passive: true }); on();
+}
+
+// ---------- "Updated 12s ago" ----------
+let lastUpdate = 0;
+setInterval(() => {
+  if (REPLAY || !lastUpdate) return;
+  const s = Math.round((Date.now() - lastUpdate) / 1000);
+  $("ago").textContent = (games.some(g => g.state === "in") ? "Live · " : "") + "updated " + (s < 60 ? s + "s" : Math.round(s / 60) + "m") + " ago";
+}, 1000);
+
+// a player's final: points so far plus the draw for the time left (draw quantiles are precomputed per row)
+let QLO, QHI, QMU;
+function drawQuantiles() {
+  const NR = L.nsim, rows = D.length / NR; QLO = new Float32Array(rows); QHI = new Float32Array(rows); QMU = new Float32Array(rows);
+  const buf = new Float32Array(NR);
+  for (let k = 0; k < rows; k++) {
+    let sum = 0; for (let s = 0; s < NR; s++) { buf[s] = D[k * NR + s] / 10; sum += buf[s]; }
+    buf.sort(); QLO[k] = buf[Math.floor(.1 * (NR - 1))]; QHI[k] = buf[Math.floor(.9 * (NR - 1))]; QMU[k] = sum / NR;
+  }
+}
+function finalDist(p, n) {
+  if (n.mu != null) return { mu: n.mu, lo: n.lo, hi: n.hi };
+  if (p.row == null) return { mu: n.pts, lo: n.pts, hi: n.pts };
+  const f = n.state === "bye" ? 1 : n.frac, b = n.state === "bye" ? 0 : n.pts;
+  return { mu: b + QMU[p.row] * f, lo: b + QLO[p.row] * f, hi: b + QHI[p.row] * f };
+}
+// ---------- What's Left ----------
+// Points a player must score from here before his team's best-ball total goes up (0 if he already counts)
+function needs(r, i) {
+  const vals = r.now.map(n => n.pts), pos = r.ps.map(p => p.pos), base = bestBall(vals, pos), x0 = vals[i];
+  const up = x => { const v = vals.slice(); v[i] = x; return bestBall(v, pos) > base + 1e-6; };
+  if (up(x0 + .01)) return 0;
+  let lo = x0, hi = x0 + 150;
+  if (!up(hi)) return null;
+  for (let k = 0; k < 30; k++) { const mid = (lo + hi) / 2; if (up(mid)) hi = mid; else lo = mid; }
+  return hi - x0;
+}
+function gameTag(g) {
+  if (g.state === "in") return gameClock(g).trim();
+  const d = new Date(g.kickoff), day = d.getDay(), h = d.getHours();
+  if (h >= 19 && day === 4) return "TNF"; if (h >= 19 && day === 0) return "SNF"; if (h >= 19 && day === 1) return "MNF";
+  return fmtKick(g.kickoff);
+}
+let wlGame = "all";
+function renderLeft(res) {
+  const nPts = L.f1.filter(x => x > 0).length, by = [...res].sort((a, b) => b.cur - a.cur);
+  const lead = by[0].cur, third = by[Math.min(2, by.length - 1)].cur, cut = by[Math.min(nPts, by.length) - 1].cur;
+  const remGames = games.filter(g => g.state !== "post" && L.players.some(p => p.game === g && p.proj > 0)).sort((a, b) => a.kickoff - b.kickoff);
+  if (wlGame !== "all" && !remGames.some(g => g.id === wlGame)) wlGame = "all";
+  $("gf").innerHTML = remGames.length > 1 ? [`<button data-g="all" class="${wlGame === "all" ? "on" : ""}">All</button>`,
+    ...remGames.map(g => `<button data-g="${esc(g.id)}" class="${wlGame === g.id ? "on" : ""}">${esc(g.away)} @ ${esc(g.home)}</button>`)].join("") : "";
+  $("gf").querySelectorAll("button").forEach(b => b.onclick = () => { wlGame = b.dataset.g; renderLeft(LAST); renderScoreboard(); markPicked(); });
+  const gapCell = (k, n, v, odds) => k < n ? `<td class="gap dim">–<i>${pct(odds)}</i></td>` : `<td class="gap">${(v).toFixed(1)}<i>${pct(odds)}</i></td>`;
+  let h = `<tr><th></th><th class="l">Team</th><th>Now</th><th>to Win</th><th>to Podium</th><th>to Points</th></tr>`;
+  by.forEach((r, k) => {
+    const cutLine = k === 0 || k === 2 || k === nPts - 1;
+    const chips = r.ps.map((p, i) => i).filter(i => r.now[i].left && (wlGame === "all" || (r.now[i].g || p.game || {}).id === wlGame))
+      .sort((a, b) => r.now[b].add - r.now[a].add).map(i => {
+        const p = r.ps[i], n = r.now[i], g = n.g || p.game, nd = needs(r, i);
+        const last = p.name.replace(/\s+(Jr\.?|Sr\.?|II|III|IV|V)$/i, "").split(" ").slice(-1)[0];
+        return `<span class="chip ${n.state}" data-g="${esc((g || {}).id || "")}"><b>${esc(last)}</b> ${badge(n.tm || p.nfl)} · ${esc(gameTag(g))} · needs ${nd == null ? "–" : nd.toFixed(1)} · ${pct(100 * n.cnt)} · +${n.add.toFixed(1)}</span>`;
+      });
+    const anyLeft = r.now.some(n => n.left);
+    h += `<tr class="${cutLine ? "cut" : ""}${chips.length || anyLeft ? " team2" : ""}"><td class="pos">${k + 1}</td><td class="l name"><b>${esc(r.team.name)}</b></td>
+      <td class="big">${f1(r.cur)}</td>${gapCell(k, 1, r.cur - lead, r.win)}${gapCell(k, 3, r.cur - third, r.top3)}${gapCell(k, nPts, r.cur - cut, r.top6)}</tr>`;
+    h += `<tr class="chips${cutLine ? " cut" : ""}"><td colspan="6">${chips.length ? chips.join("") : `<span class="dim">${anyLeft ? "No one in this game" : "Done"}</span>`}</td></tr>`;
+  });
+  $("games").innerHTML = h;
+}
+
+const SLOT_ORDER = { QB: 0, RB: 1, WR: 2, TE: 3, FLEX: 4 };
+function playersTable(r) {
+  const shown = r.ps.map((p, i) => i).filter(i => r.slot[i] || r.ps[i].proj > 0 || r.now[i].pts !== 0);
+  const by = (a, b, sa, sb) => SLOT_ORDER[sa] - SLOT_ORDER[sb] || r.now[b].pts - r.now[a].pts || r.ps[b].proj - r.ps[a].proj;
+  const starters = shown.filter(i => r.slot[i]).sort((a, b) => by(a, b, r.slot[a], r.slot[b]));
+  const bench = shown.filter(i => !r.slot[i]).sort((a, b) => by(a, b, r.ps[a].pos, r.ps[b].pos));
+  const live = shown.filter(i => r.now[i].state !== "bye"), cnt = st => live.filter(i => r.now[i].state === st).length;
+  const sum = (allFinal(r) ? [`Final ${f1(r.cur)}`, `${cnt("post")} done`] :
+    [`Now ${f1(r.cur)}`, `Proj ${f1(r.mean)}`, `range ${Math.round(r.lo)}–${Math.round(r.hi)}`,
+     `${cnt("in")} playing`, `${cnt("pre")} to play`, `${cnt("post")} done`]).join(" · ");
+  const row = (i, on) => {
+    const p = r.ps[i], n = r.now[i], fd = finalDist(p, n), pre = n.state === "pre" || n.state === "bye";
+    const sc = { in: "s-in", post: "s-post", pre: "s-pre" }[n.state] || "";
+    return `<tr class="${on ? "" : "bench "}${sc}" data-g="${esc((n.g || p.game || {}).id || "")}"><td class="slot">${on ? r.slot[i] : p.pos}</td>
+      <td class="pn">${esc(p.name)} ${badge(n.tm || p.nfl)}${n.tag ? `<span class="ot" title="${esc(n.why || "")}">${n.tag}</span>` : ""}${stLabel(n, p)}${n.state === "in" || n.state === "post" ? statLine(p.pos, n.st) : ""}</td>
+      <td class="now">${pre ? '<span class="dim">–</span>' : `<span data-k="p${esc(p.id)}" data-v="${n.pts.toFixed(1)}" data-flash="row">${f1(n.pts)}</span>`}</td><td class="proj">${n.state === "post" ? '<span class="dim">–</span>' : f1(fd.mu)}</td><td class="rg">${n.state === "post" ? "" : `${Math.round(fd.lo)}–${Math.round(fd.hi)}`}</td></tr>`;
+  };
+  const head = t => `<tr class="grp"><td class="gl" colspan="2">${t}</td><td>Now</td><td>Proj</td><td>Range</td></tr>`;
+  let h = `<div class="tsum">${sum}</div><div class="lg"><span class="c-in">● Live</span><span class="c-post">● Final</span><span class="c-pre">● To play</span></div><table class="pl">` + head("In the lineup") + starters.map(i => row(i, true)).join("");
+  if (bench.length) h += head("Bench") + bench.map(i => row(i, false)).join("");
+  return h + "</table>";
+}
+
+// ---------- odds history chart ----------
+const HKEY = () => `f1c-live-${L.season}-w${L.week}`;
+function saveHistory() { if (REPLAY) return; try { localStorage.setItem(HKEY(), JSON.stringify(history.slice(-400))); } catch (e) {} }
+function loadHistory() { if (REPLAY) return []; try { return JSON.parse(localStorage.getItem(HKEY()) || "[]"); } catch (e) { return []; } }
+function pushHistory(t, res) {
+  const w = {}, e = {}; res.forEach(r => { w[r.team.id] = +r.win.toFixed(1); e[r.team.id] = +r.ef1.toFixed(2); });
+  const last = history[history.length - 1];
+  if (last && t - last.t < 60e3) history[history.length - 1] = { t, w, e }; else history.push({ t, w, e });
+  history.sort((a, b) => a.t - b.t);
+  saveHistory();
+}
+function renderChart(res) {
+  // win odds: the contenders in colour (by win order), the rest grey; expected F1: every team its own colour and label
+  const lead = [...res].sort((a, b) => b.win - a.win).slice(0, COLORS.length).filter(r => r.win >= 1 || history.some(h => (h.w[r.team.id] || 0) >= 5));
+  const col = {}; lead.forEach((r, i) => col[r.team.id] = COLORS[i]);
+  drawChart($("chart"), history, "w", col, v => pct(v), vmax => Math.min(100, Math.max(20, vmax) * 1.08), [0, 25, 50, 75, 100], v => v + "%");
+  const all = {}; L.teams.forEach((t, i) => all[t.id] = TEAM_COLORS[i % TEAM_COLORS.length]);
+  const he = history.filter(h => h.e), emax = Math.max(1, ...he.flatMap(h => Object.values(h.e)));
+  const step = emax > 30 ? 10 : emax > 12 ? 5 : 2;
+  drawChart($("chart2"), he, "e", all, v => v.toFixed(1), vmax => vmax * 1.08, Array.from({ length: Math.floor(emax * 1.08 / step) + 1 }, (_, k) => k * step), v => String(v), 320);
+  $("legend").innerHTML = "";
+  $("chartnote").textContent = REPLAY ? "Replay of the day in 15-minute steps." : HIST_NOTE;
+}
+let HIST_NOTE = "Starts from the pre-game sims; this page adds a point each time it updates while open.";
+const chartSel = {};   // svg id -> team picked out by a tap
+function drawChart(svg, hist, k, col, fmt, ymaxOf, grid, gfmt, Hh) {
+  // drawn in real pixels so the text stays readable on a phone
+  const W = Math.max(320, Math.round(svg.getBoundingClientRect().width) || 720), H = Hh || 260, m = { l: 34, r: 104, t: 10, b: 24 };
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  if (hist.length < 2) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" fill="#5c5c5c" font-size="13" text-anchor="middle">The line fills in as games are played</text>`; return; }
+  // points sit evenly by position in the history, not by clock time, so Thu/Sun/Mon each get room;
+  // in replay the axis spans the whole replay while the line stops at the slider
+  const axis = replayFull || hist, nA = axis.length;
+  const ymax = ymaxOf(Math.max(...hist.flatMap(h => Object.values(h[k]))));
+  const x = i => m.l + (W - m.l - m.r) * i / Math.max(1, nA - 1), y = v => m.t + (H - m.t - m.b) * (1 - v / ymax);
+  let s = "";
+  for (const v of grid.filter(v => v <= ymax)) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="#1f1f1f"/><text x="${m.l - 6}" y="${y(v) + 4}" fill="#5c5c5c" font-size="11" text-anchor="end">${gfmt(v)}</text>`;
+  const ticks = Math.min(W < 500 ? 2 : 4, nA - 1); for (let j = 0; j <= ticks; j++) { const i = Math.round((nA - 1) * j / ticks);
+    s += `<text x="${x(i)}" y="${H - 6}" fill="#5c5c5c" font-size="11" text-anchor="${j === 0 ? "start" : j === ticks ? "end" : "middle"}">${esc(new Date(axis[i].t).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }))}</text>`; }
+  const ids = L.teams.map(t => t.id).sort((a, b) => (col[a] ? 1 : 0) - (col[b] ? 1 : 0));
+  const labels = [];
+  for (const id of ids) {
+    const pts = hist.map((h, i) => `${x(i).toFixed(1)},${y(h[k][id] || 0).toFixed(1)}`).join(" ");
+    s += `<polyline class="ln" data-id="${esc(id)}" points="${pts}" fill="none" stroke="${col[id] || "#333"}" stroke-width="${col[id] ? 2 : 1.2}" stroke-linejoin="round"/>` +
+         (col[id] ? `<polyline class="hit" data-id="${esc(id)}" points="${pts}"/>` : "");
+    if (col[id]) labels.push({ id, v: hist[hist.length - 1][k][id] || 0 });
+  }
+  // end labels: in value order, at least 13px apart, kept inside the plot
+  labels.sort((a, b) => b.v - a.v);
+  const gap = 13, top = m.t + 4, bot = H - m.b + 2;
+  labels.forEach((l, i) => l.y = Math.max(y(l.v) + 4, i ? labels[i - 1].y + gap : top));
+  for (let i = labels.length - 1; i >= 0; i--) labels[i].y = Math.min(labels[i].y, i === labels.length - 1 ? bot : labels[i + 1].y - gap);
+  for (const l of labels) s += `<text class="lab" data-id="${esc(l.id)}" x="${W - m.r + 6}" y="${l.y.toFixed(1)}" fill="${col[l.id]}" font-size="11" font-weight="600">${esc(L.teams.find(t => t.id === l.id).name)} ${fmt(l.v)}</text>`;
+  svg.innerHTML = s;
+  const pick = id => { svg.classList.toggle("hl", !!id); svg.querySelectorAll(".ln,.lab").forEach(e => e.classList.toggle("on", e.dataset.id === id)); };
+  pick(chartSel[svg.id]);
+  svg.onclick = ev => { const id = ev.target.dataset && ev.target.dataset.id; chartSel[svg.id] = id && id !== chartSel[svg.id] ? id : null; pick(chartSel[svg.id]); };
+  svg.onmouseover = ev => { const id = ev.target.dataset && ev.target.dataset.id; if (id && col[id]) pick(id); };
+  svg.onmouseout = () => pick(chartSel[svg.id]);
+}
+
+// Live mode: rebuild the week's history from play-by-play (every game that has started, 15-minute steps while a game
+// was on, 1,000 sims a step), so every viewer gets the same full chart. Uses the current projections and sims.
+let HIST = false, backfilling = false;
+function stateAt(T) {
+  stats = {};
+  for (const g of games) {
+    const live = g._live;
+    let p = live.state === "pre" ? 0 : Math.min(1, Math.max(0, (T - g.kickoff) / REAL_GAME_MS));
+    if (live.state !== "post") p = Math.min(p, .99);
+    g.frac = 1 - p; g.state = p === 0 ? "pre" : p === 1 ? "post" : "in";
+    g.ps = g.pbp ? pbpState(g, p === 1 ? Infinity : p * GAME_SEC) : null;
+    if (g.state === "post") Object.assign(stats, finalBox[g.id] || {});
+  }
+}
+async function backfill() {
+  const started = games.filter(g => g.state !== "pre");
+  if (REPLAY || !started.length || started.some(g => !g.pbp)) return;   // no play-by-play: keep this device's own history
+  backfilling = true;
+  const keep = ["state", "frac", "ps"], st0 = stats;
+  games.forEach(g => { g._live = Object.fromEntries(keep.map(k => [k, g[k]])); });
+  try {
+    const step = 15 * 60e3, now = Date.now(), set = new Set();
+    for (const g of started) for (let T = g.kickoff; T <= Math.min(now, g.kickoff + REAL_GAME_MS); T += step) set.add(T);
+    const steps = [...set].sort((a, b) => a - b), hist = [];
+    const pg = pregame(), w0 = {}, e0 = {}; pg.forEach(r => { w0[r.team.id] = +r.win.toFixed(1); e0[r.team.id] = +r.ef1.toFixed(2); });
+    hist.push({ t: games[0].kickoff - 60e3, w: w0, e: e0 });
+    HIST = true;
+    for (let k = 0; k < steps.length; k++) {
+      stateAt(steps[k]); indexNames(); const r = runSims(false, 1000);
+      const w = {}, e = {}; r.forEach(x => { w[x.team.id] = +x.win.toFixed(1); e[x.team.id] = +x.ef1.toFixed(2); }); hist.push({ t: steps[k], w, e });
+      if (k % 6 === 5) await new Promise(res => setTimeout(res, 0));
+    }
+    const last = steps[steps.length - 1] || 0;
+    history = [...hist, ...history.filter(h => h.t > last + 60e3 && h.e)];
+    HIST_NOTE = "Rebuilt from the play-by-play every 15 minutes while games were on (using the current projections and sims), then a point each update.";
+  } catch (e) { console.warn("backfill", e); }
+  finally {
+    HIST = false;
+    games.forEach(g => { Object.assign(g, g._live); delete g._live; }); stats = st0; indexNames();
+    backfilling = false;
+  }
+  if (LAST) render(LAST);
+}
+
+// ---------- main loop ----------
+let LAST = null, timer = null;
+function statusLine() {
+  const live = games.filter(g => g.state === "in").length, done = games.filter(g => g.state === "post").length;
+  const next = games.find(g => g.state === "pre");
+  const parts = [`<span>${live ? live + " game" + (live > 1 ? "s" : "") + " live · " : ""}${done} of ${games.length} final</span>`];
+  if (next && !live) parts.push(`<span>Next: ${esc(next.away)} @ ${esc(next.home)}, ${esc(fmtKick(next.kickoff))}</span>`);
+  if (!REPLAY && !live && nextTickAt - Date.now() > 5 * 60e3) parts.push(`<span>Next update ${esc(fmtKick(nextTickAt))}</span>`);
+  $("status").innerHTML = parts.join("");
+  $("ldot").className = "dot" + (live ? "" : " off");
+  if (REPLAY) $("ago").textContent = "Replay"; else if (!lastUpdate) $("ago").textContent = live ? "Live" : "Updated just now";
+}
+// The week file is rebuilt at noon (rosters, after waivers) and before each game window (GTS sims); a new week
+// moves current.json. Either one reloads the page.
+async function dataChanged() {
+  try {
+    if (!Q.get("week")) { const cur = await getJSON("current.json"); if (cur.week !== L.week) return true; }
+    const l = await getJSON(`week-${String(L.week).padStart(2, "0")}.json`);
+    return l.built !== L.built;
+  } catch (e) { return false; }
+}
+// While a game is live: every minute (and the week file every 10). Otherwise: one check, then sleep until 15 minutes
+// before the next kickoff, or until the page is opened or shown again.
+let lastDataCheck = Date.now(), nextTickAt = 0, ticking = false;
+async function tick() {
+  if (backfilling) { clearTimeout(timer); timer = setTimeout(tick, 5e3); return; }
+  if (ticking) return; ticking = true; clearTimeout(timer);
+  try {
+    if (Date.now() - lastDataCheck > 10 * 60e3) { lastDataCheck = Date.now(); if (await dataChanged()) { location.reload(); return; } }
+    await loadScoreboard(); attachGames(); await loadStats(); indexNames();
+    try { MFL = await getJSON(`week-${String(L.week).padStart(2, "0")}-mfl.json`); } catch (e) { /* not published yet */ }
+    LAST = useSimCenter(runSims(true), false); pushHistory(Date.now(), LAST); $("err").innerHTML = ""; lastUpdate = Date.now();
+  } catch (e) { console.error(e); $("err").innerHTML = `<div class="err">Couldn't reach live scores (${esc(e.message)}). Retrying.</div>`; }
+  const now = Date.now(), live = games.some(g => g.state === "in");
+  const next = games.filter(g => g.state === "pre").map(g => g.kickoff).sort((a, b) => a - b)[0];
+  const wait = live || !games.length ? 60e3 : next ? Math.max(60e3, next - 15 * 60e3 - now) : 6 * 3600e3;
+  nextTickAt = now + wait; ticking = false;
+  if (LAST) { render(LAST); statusLine(); }
+  timer = setTimeout(tick, Math.min(wait, 2 ** 31 - 1));
+}
+document.addEventListener("visibilitychange", () => {
+  if (REPLAY || !L || document.visibilityState !== "visible") return;
+  if (nextTickAt - Date.now() > 60e3) { lastDataCheck = 0; tick(); }
+});
+
+// One sim with the Sim Center (19 Nov 2026): the week file carries the Sim Center's own table (pregame) for the
+// games that were final when it was built (final_teams). While no game is underway and the same games are final,
+// show those numbers as-is; once a game is live, the page re-sims from the same run's draws.
+function sameStateAsBuild(allPre) {
+  if (!L.pregame || REPLAY) return false;
+  const ft = new Set(L.final_teams || []);
+  if (allPre) return ft.size === 0;
+  if (games.some(g => g.state === "in")) return false;
+  const rostered = new Set(L.players.map(p => p.nfl));
+  const fin = new Set(games.filter(g => g.state === "post").flatMap(g => [g.away, g.home]).filter(t => rostered.has(t)));
+  if (fin.size !== ft.size) return false;
+  for (const t of fin) if (!ft.has(t)) return false;
+  return true;
+}
+function useSimCenter(res, allPre) {
+  if (!sameStateAsBuild(allPre)) return res;
+  const P = new Map(L.pregame.map(p => [p.id, p]));
+  res.forEach(r => { const p = P.get(r.team.id); if (p) Object.assign(r, { win: p.win, top3: p.top3, top6: p.top6, ef1: p.ef1, mean: p.mean }); });
+  return res;
+}
+function pregame() {   // all games unplayed: the pre-game sims
+  const saved = games.map(g => [g.state, g.frac]);
+  games.forEach(g => { g.state = "pre"; g.frac = 1; }); const st = stats; stats = {};
+  const r = useSimCenter(runSims(false), true);
+  games.forEach((g, i) => { g.state = saved[i][0]; g.frac = saved[i][1]; }); stats = st;
+  return r;
+}
+
+async function startReplay() {
+  await loadScoreboard(); attachGames(); await loadReplay();
+  // steps only while some game is on: each game's kickoff to kickoff + 3.2h every 15 minutes,
+  // plus one step before the first kickoff and one after the last finish
+  const step = 15 * 60e3, set = new Set();
+  for (const g of games) for (let T = g.kickoff; T <= g.kickoff + REAL_GAME_MS; T += step) set.add(T);
+  const tA = Math.min(...set) - step, tB = Math.max(...games.map(g => g.kickoff + REAL_GAME_MS)) + step;
+  set.add(tA); set.add(tB);
+  const steps = [...set].sort((a, b) => a - b);
+
+  // the final standings first, then the history behind them (1,000 sims a step)
+  replayAt(tB); indexNames(); LAST = runSims(true); history = []; replayFull = null;
+  render(LAST); statusLine(); performance.mark("board");
+  $("chartnote").textContent = "Building the replay…";
+  const hist = [];
+  for (let k = 0; k < steps.length; k++) {
+    replayAt(steps[k]); indexNames(); const r = runSims(false, 1000);
+    const w = {}, e = {}; r.forEach(x => { w[x.team.id] = +x.win.toFixed(1); e[x.team.id] = +x.ef1.toFixed(2); }); hist.push({ t: steps[k], w, e });
+    if (k % 8 === 7) await new Promise(res => setTimeout(res, 0));
+  }
+  replayFull = hist;
+  $("replay").innerHTML = `<div class="replay">Replay of week ${L.week}: <b id="rt"></b><input type="range" id="rs" min="0" max="${steps.length - 1}" step="1" value="${steps.length - 1}"></div>`;
+  const go = () => { const k = +$("rs").value, T = steps[k]; replayAt(T); indexNames(); LAST = runSims(true);
+    history = hist.slice(0, Math.max(2, k + 1));
+    render(LAST); statusLine(); $("rt").textContent = new Date(T).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }); };
+  $("rs").oninput = go; go(); performance.mark("chart");
+}
+
+(async function main() {
+  try {
+    const cur = Q.get("week") ? { week: +Q.get("week") } : await getJSON("current.json");
+    const ww = String(cur.week).padStart(2, "0");
+    const [l, bin] = await Promise.all([getJSON(`week-${ww}.json`), fetch(`week-${ww}.bin`, { cache: "no-store" }).then(r => r.arrayBuffer())]);
+    L = l; D = new Int16Array(bin); drawQuantiles();
+    if (L.tm && L.tm.length) try {
+      const r = await fetch(`week-${ww}-tm.bin`, { cache: "no-store" });
+      if (r.ok) { TM = new Int16Array(await r.arrayBuffer()); L.tm.forEach(x => TMROW[x.team] = x.row); }
+    } catch (e) { console.warn(e); }
+    $("toggle").onclick = () => { if (openTeams.size >= L.teams.length) openTeams.clear(); else L.teams.forEach(t => openTeams.add(t.id));
+      if (LAST) render(LAST); else syncToggle(); };
+    $("wk").textContent = `Week ${L.week}`; setupTabs();
+    $("srcs").textContent = L.sources + (L.run ? ` (${L.run}, the same sim as the Sim Center)` : "");
+    document.title = `F1C Week ${L.week} Live`;
+    if (REPLAY) return startReplay();
+    await loadScoreboard(); attachGames();
+    history = loadHistory();
+    if (!history.length || history[0].t > games[0].kickoff) {
+      const pg = pregame(), w = {}, e = {}; pg.forEach(r => { w[r.team.id] = +r.win.toFixed(1); e[r.team.id] = +r.ef1.toFixed(2); });
+      history.unshift({ t: Math.min(games[0].kickoff, Date.now()) - 60e3, w, e });
+    }
+    await tick();
+    performance.mark("board");
+    await backfill(); performance.mark("history");
+  } catch (e) { console.error(e); $("err").innerHTML = `<div class="err">Couldn't load the live page (${esc(e.message)}).</div>`; }
+})();
+</script>
+</body>
+</html>
