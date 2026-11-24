@@ -28,10 +28,11 @@ phone_shots <- function(html, n = 3, frame_h = 1400) {
   writeLines(sprintf('<!doctype html><html><body style="margin:0;background:#0a0a0a"><iframe src="file:///%s" style="border:0;width:390px;height:%dpx;display:block"></iframe></body></html>',
                      normalizePath(html, "/"), total), wrap)
   full <- tempfile(fileext = ".png")
-  system2(edge, c("--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=2",
-                  sprintf("--window-size=600,%d", total), "--virtual-time-budget=8000",
-                  shQuote(paste0("--screenshot=", normalizePath(full, mustWork = FALSE))),
-                  shQuote(paste0("file:///", normalizePath(wrap, "/")))), stdout = FALSE, stderr = FALSE)
+  if (!exists("edge_run")) source("R/edge.R")
+  edge_run(c("--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=2",
+             sprintf("--window-size=600,%d", total), "--virtual-time-budget=8000",
+             shQuote(paste0("--screenshot=", normalizePath(full, mustWork = FALSE))),
+             shQuote(paste0("file:///", normalizePath(wrap, "/")))), timeout = 120, exe = edge)
   img <- png::readPNG(full)
   outs <- character()
   for (i in seq_len(n)) {

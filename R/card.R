@@ -1,6 +1,7 @@
 # WhatsApp image cards: standalone HTML at 540x675, screenshotted at 2x -> 1080x1350 PNG
 
 EDGE <- "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+if (!exists("edge_run")) source("R/edge.R")
 
 card_css <- '
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
@@ -199,9 +200,8 @@ shoot <- function(html, png, h = 675) {
   src <- tempfile(fileext = ".html")
   writeLines(html, src, useBytes = TRUE)
   png <- normalizePath(png, mustWork = FALSE)
-  system2(EDGE, c("--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=2",
-                  sprintf("--window-size=540,%d", h), "--virtual-time-budget=4000",
-                  shQuote(paste0("--screenshot=", png)), shQuote(paste0("file:///", normalizePath(src, "/")))),
-          stdout = FALSE, stderr = FALSE)
+  edge_run(c("--headless=new", "--disable-gpu", "--hide-scrollbars", "--force-device-scale-factor=2",
+             sprintf("--window-size=540,%d", h), "--virtual-time-budget=4000",
+             shQuote(paste0("--screenshot=", png)), shQuote(paste0("file:///", normalizePath(src, "/")))), timeout = 90, exe = EDGE)
   png
 }
