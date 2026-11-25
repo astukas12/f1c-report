@@ -1,4 +1,4 @@
-# F1C weekly report, Tuesday 3:45 AM ET (Windows task "F1C weekly report", 16 Nov 2026, Andrew).
+# F1C weekly report, Tuesday 2 AM ET (Windows task "F1C weekly report", 16 Nov 2026, Andrew).
 # Builds cards + report on final MFL scores, retries every 30 min until 9 AM if the score check stops it,
 # then commits the site/report files only and pushes to main.
 # Status for the project thread: logs/weekly_run_status.txt (one line: OK|FAIL week url/reason)
